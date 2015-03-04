@@ -764,9 +764,21 @@
         </antcall>
     </target>
 
-    <target name="jtreg-tests" depends="-def-jtreg,jar"
+    <target name="jtreg-tests-checkers" depends="-def-jtreg,jar"
+            description="Run Checker jtreg tests">
+	<jtreg-tool name="all" tests="." dir="jtreg"/>
+    </target>
+
+    <target name="jtreg-tests-framework" depends="-def-jtreg,jar"
+	    description="Run framework jtreg tests">
+        <ant dir="${framework.loc}">
+            <target name="jtreg-tests"/>
+        </ant>
+    </target>
+
+    <target name="jtreg-tests"
+            depends="-def-jtreg,jar,jtreg-tests-checkers,jtreg-tests-framework"
             description="Run jtreg tests">
-        <jtreg-tool name="all" tests="."/>
     </target>
 
     <target name="-def-check">
@@ -794,11 +806,11 @@
         </macrodef>
     </target>
 
-    <target name="-check-jtreg.home" depends="-def-check">
+    <target name="-check-jtreg.home" depends="-def-check,build-tests">
         <check name="jtreg" property="jtreg.home" marker="lib/jtreg.jar"/>
     </target>
 
-    <target name="-def-jtreg" unless="jtreg.defined" depends="-check-jtreg.home">
+    <target name="-def-jtreg" unless="jtreg.defined" depends="-check-jtreg.home,build-tests">
         <taskdef name="jtreg" classname="com.sun.javatest.regtest.Main$$Ant">
             <classpath>
                 <pathelement location="${jtreg.home}/lib/jtreg.jar"/>
@@ -809,6 +821,7 @@
         <macrodef name="jtreg-tool">
             <attribute name="name"/>
             <attribute name="tests"/>
+            <attribute name="dir"/>
             <!-- <attribute name="jdk" default="${java.home}"/> -->
             <!-- TODO samevm true does not work. Investigate. -->
             <attribute name="samevm" default="false"/>
@@ -820,9 +833,9 @@
             <sequential>
                 <property name="coverage.options" value=""/>    <!-- default -->
                 <property name="coverage.classpath" value=""/>  <!-- default -->
-                <property name="checker.classpath" value="${build}:${javac.lib}:${javap.lib}:${checker.lib}"/>
+                <property name="checker.classpath" value="${build}:${javac.lib}:${javap.lib}:${checker.lib}/"/>
                 <jtreg
-                    dir="jtreg"
+                    dir="@{dir}"
                     workDir="${build.jtreg.dir}/@{name}/work"
                     reportDir="${build.jtreg.dir}/@{name}/report"
                     samevm="@{samevm}" verbose="@{verbose}"
