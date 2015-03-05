@@ -833,7 +833,7 @@
             <sequential>
                 <property name="coverage.options" value=""/>    <!-- default -->
                 <property name="coverage.classpath" value=""/>  <!-- default -->
-                <property name="checker.classpath" value="${build}:${javac.lib}:${javap.lib}:${checker.lib}/"/>
+                <property name="checker.classpath" value="${build}:${javac.lib}:${javap.lib}:${checker.lib}"/>
                 <jtreg
                     dir="@{dir}"
                     workDir="${build.jtreg.dir}/@{name}/work"
