@@ -4,25 +4,7 @@ package org.checkerframework.common.basetype;
 import org.checkerframework.checker.igj.qual.*;
 */
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.TypeElement;
-
+import org.checkerframework.common.reflection.MethodValChecker;
 import org.checkerframework.framework.qual.SubtypeOf;
 import org.checkerframework.framework.qual.TypeQualifiers;
 import org.checkerframework.framework.source.SourceChecker;
@@ -34,12 +16,28 @@ import org.checkerframework.javacutil.AbstractTypeProcessor;
 import org.checkerframework.javacutil.AnnotationProvider;
 import org.checkerframework.javacutil.ErrorReporter;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.TypeElement;
+
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.util.Context;
 import com.sun.tools.javac.util.Log;
-
-import javax.lang.model.element.AnnotationMirror;
 
 /**
  * An abstract {@link SourceChecker} that provides a simple {@link
@@ -96,6 +94,9 @@ import javax.lang.model.element.AnnotationMirror;
  * may override the {@link BaseAnnotatedTypeFactory#createQualifierHierarchy()} method.
  *
  * @see org.checkerframework.framework.qual
+ *
+/**
+ * @checker_framework.manual ##writing-compiler-interface The checker class
  */
 public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeContext {
 
@@ -150,13 +151,30 @@ public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeC
       * are created when overriding this method.
       *
       * This method is protected so it can be overridden, but it is only intended to be called internally by the BaseTypeChecker.
-      * Please override this method but do not call it from classes other than BaseTypeChecker.
+      * Please override this method but do not call it from classes other than BaseTypeChecker. Subclasses that override
+      * this method should call super and added dependencies so that checkers required for reflection resolution are included
+      * if reflection resolution is requested.
       *
       * The BaseTypeChecker will not modify the list returned by this method.
       */
      protected LinkedHashSet<Class<? extends BaseTypeChecker>> getImmediateSubcheckerClasses() {
+        if (shouldResolveReflection()) {
+            return new LinkedHashSet<Class<? extends BaseTypeChecker>>(
+                    Collections.singleton(MethodValChecker.class));
+        }
          return new LinkedHashSet<Class<? extends BaseTypeChecker>>();
      }
+
+    /**
+     * Returns whether or not reflection should be resolved
+     */
+    public boolean shouldResolveReflection() {
+        // Because this method is indirectly called by getSubcheckers and
+        // this.getOptions or this.hasOption
+        // also call getSubcheckers, super.getOptions is called here.
+        return super.getOptions().containsKey("resolveReflection");
+
+    }
 
      /**
      * Returns the appropriate visitor that type-checks the compilation unit
@@ -364,25 +382,17 @@ public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeC
 
             try {
                 BaseTypeChecker instance = subcheckerClass.newInstance();
+                instance.setProcessingEnvironment(this.processingEnv);
                 instance.subcheckers = Collections.unmodifiableList(new ArrayList<BaseTypeChecker>()); // Prevent the new checker from storing non-immediate subcheckers
                 immediateSubcheckers.add(instance);
-                alreadyInitializedSubcheckerMap.put(subcheckerClass, instance);
                 instance.immediateSubcheckers = instance.instantiateSubcheckers(alreadyInitializedSubcheckerMap);
+                alreadyInitializedSubcheckerMap.put(subcheckerClass, instance);
             } catch (Exception e) {
                 ErrorReporter.errorAbort("Could not create an instance of " + subcheckerClass);
             }
         }
 
         return Collections.unmodifiableList(immediateSubcheckers);
-    }
-
-    @Override
-    protected void setProcessingEnvironment(ProcessingEnvironment env) {
-        for (BaseTypeChecker checker : getSubcheckers()) {
-            checker.setProcessingEnvironment(env);
-        }
-
-        super.setProcessingEnvironment(env);
     }
 
     /*
@@ -408,25 +418,35 @@ public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeC
     // AbstractTypeProcessor delegation
     @Override
     public void typeProcess(TypeElement element, TreePath tree) {
+
+        // If Java has issued errors, don't run any checkers on this compilation unit.
+        // If a sub checker issued errors, run the next checker on this compilation unit.
+
+        // Log.nerrors counts the number of Java and checker errors have been issued.
+        // super.typeProcess does not typeProcess if log.nerrors > errorsOnLastExit
+
+        // In order to run the next checker on this compilation unit even if the previous
+        // issued errors, the next checker's errsOnLastExit needs to include all errors
+        // issued by previous checkers.
+
+        // To prevent any checkers from running if a Java error was issued for this compilation unit,
+        // errsOnLastExit should not include any Java errors.
+        Context context = ((JavacProcessingEnvironment)processingEnv).getContext();
+        Log log = Log.instance(context);
+        // Start with this.errsOnLastExit which will account for errors seen by
+        // by a previous checker run in an aggregate checker.
+        int nerrorsOfAllPreviousCheckers = this.errsOnLastExit;
         for (BaseTypeChecker checker : getSubcheckers()) {
-            checker.errsOnLastExit = this.errsOnLastExit;
+            checker.errsOnLastExit += nerrorsOfAllPreviousCheckers;
+            int errorsBeforeTypeChecking = log.nerrors;
+
             checker.typeProcess(element, tree);
-            this.errsOnLastExit = checker.errsOnLastExit;
-        }
 
+            int errorsAfterTypeChecking = log.nerrors;
+            nerrorsOfAllPreviousCheckers += errorsAfterTypeChecking - errorsBeforeTypeChecking;
+        }
+        this.errsOnLastExit += nerrorsOfAllPreviousCheckers;
         super.typeProcess(element, tree);
-
-        if (!getSubcheckers().isEmpty()) {
-            Context context = ((JavacProcessingEnvironment)processingEnv).getContext();
-            Log log = Log.instance(context);
-            if (log.nerrors > this.errsOnLastExit) {
-                // If there is a Java error, do not perform any
-                // of the component type checks, but come back
-                // for the next compilation unit.
-                this.errsOnLastExit = log.nerrors;
-            }
-        }
-        // Do not add code past this point - the error handling must come last.
     }
 
     @Override
@@ -467,7 +487,7 @@ public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeC
     protected Object processArg(Object arg) {
         if (arg instanceof Collection) {
             List<Object> newList = new LinkedList<>();
-            for (Object o : ((Collection)arg)) {
+            for (Object o : ((Collection<?>)arg)) {
                 newList.add(processArg(o));
             }
             return newList;

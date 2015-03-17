@@ -1,9 +1,8 @@
 package org.checkerframework.common.aliasing;
 
-import java.util.List;
-
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.VariableElement;
+/*>>>
+import org.checkerframework.checker.compilermsgs.qual.CompilerMessageKey;
+*/
 
 import org.checkerframework.common.aliasing.qual.LeakedToResult;
 import org.checkerframework.common.aliasing.qual.NonLeaked;
@@ -18,7 +17,11 @@ import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedDeclared
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedExecutableType;
 import org.checkerframework.javacutil.TreeUtils;
 
-import com.sun.source.tree.CatchTree;
+import java.util.List;
+
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.VariableElement;
+
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.MethodTree;
@@ -164,7 +167,7 @@ public class AliasingVisitor extends
     // this isn't called for pseudo-assignments.
     @Override
     protected void commonAssignmentCheck(Tree varTree, ExpressionTree valueExp,
-            String errorKey) {
+            /*@CompilerMessageKey*/ String errorKey) {
         super.commonAssignmentCheck(varTree, valueExp, errorKey);
         if (isInUniqueConstructor(valueExp) && TreeUtils.
                 isExplicitThisDereference(valueExp)) {
@@ -179,7 +182,7 @@ public class AliasingVisitor extends
 
     @Override
     protected void commonAssignmentCheck(AnnotatedTypeMirror varType,
-            AnnotatedTypeMirror valueType, Tree valueTree, String errorKey,
+            AnnotatedTypeMirror valueType, Tree valueTree, /*@CompilerMessageKey*/ String errorKey,
             boolean isLocalVariableAssignement) {
         super.commonAssignmentCheck(varType, valueType, valueTree, errorKey,
                 isLocalVariableAssignement);

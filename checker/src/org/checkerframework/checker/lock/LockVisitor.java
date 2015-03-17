@@ -17,7 +17,6 @@ import org.checkerframework.framework.source.Result;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedDeclaredType;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedExecutableType;
-import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedNullType;
 import org.checkerframework.framework.util.FlowExpressionParseUtil;
 import org.checkerframework.framework.util.FlowExpressionParseUtil.FlowExpressionContext;
 import org.checkerframework.framework.util.FlowExpressionParseUtil.FlowExpressionParseException;
@@ -36,6 +35,7 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.sun.source.tree.MethodTree;
@@ -80,7 +80,7 @@ public class LockVisitor extends BaseTypeVisitor<LockAnnotatedTypeFactory> {
             AnnotatedTypeMirror valueType, Tree valueTree, /*@CompilerMessageKey*/ String errorKey,
             boolean isLocalVariableAssignement) {
 
-        if (valueType instanceof AnnotatedNullType) {
+        if (valueType.getKind() == TypeKind.NULL) {
             // Avoid issuing warnings about 'null' not matching the type of the variable.
             return;
         }
@@ -358,5 +358,4 @@ public class LockVisitor extends BaseTypeVisitor<LockAnnotatedTypeFactory> {
 
         return false;
     }
-
 }

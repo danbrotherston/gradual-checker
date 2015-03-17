@@ -200,7 +200,8 @@
              dependencies, change the Javadoc dependencies to keep
              them in sync (and vice versa). -->
         <javadoc sourcepath="${src}:${checker.loc}/${src}:${javacutil.loc}/${src}:${stubparser}/${src}:${dataflow.loc}/${src}" destdir="${api.doc}"
-                 failonerror="true"
+                 additionalParam="-Xdoclint:all,-missing"
+                 failonerror="true" failonwarning="true"
                  executable="${javadoc.bin}"
                  classpath="${build}:${javacutil.lib}:${dataflow.lib}:${stubparser.lib}:${javac.lib}:${javadoc.lib}:${junit.lib}"
                  excludepackagenames="org.checkerframework.framework.stub"
@@ -399,10 +400,38 @@
         </antcall>
     </target>
 
+    <target name="classval-tests" depends="jar,build-tests"
+            description="Run tests for the ClassVal Checker ">
+        <antcall target="-run-tests">
+            <param name="param" value="tests.ClassValTest"/>
+        </antcall>
+    </target>
+
+        <target name="aggregate-tests" depends="jar,build-tests"
+            description="Run tests for aggregate checkers">
+        <antcall target="-run-tests">
+            <param name="param" value="tests.AggregateTest"/>
+        </antcall>
+    </target>
+
+    <target name="methodval-tests" depends="jar,build-tests"
+            description="Run tests for the MethodVal Checker ">
+        <antcall target="-run-tests">
+            <param name="param" value="tests.MethodValTest"/>
+        </antcall>
+    </target>
+
     <target name="reflection-tests" depends="jar,build-tests"
             description="Run tests for reflection resolution">
         <antcall target="-run-tests">
             <param name="param" value="tests.ReflectionTest"/>
+        </antcall>
+    </target>
+
+    <target name="compound-checker-tests" depends="jar,build-tests"
+            description="Run tests for compound checker design pattern">
+        <antcall target="-run-tests">
+            <param name="param" value="tests.CompoundCheckerTest"/>
         </antcall>
     </target>
 

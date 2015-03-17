@@ -9,7 +9,7 @@ public class MethodTest {
 
     @Sibling1 int sibling1;
     @Sibling2 int sibling2;
-    
+
     public void real_class(){
         try {
         Class<?> c = Object.class;
@@ -21,10 +21,20 @@ public class MethodTest {
         } catch (Exception ignore) {
         }
     }
+
     public void pass1(@ReflectBottom MethodTest this ) {
         try {
             Class<?> c = Class.forName("MethodTest$SuperClass");
             Method m = c.getMethod("getA", new Class[] {});
+            @Sibling1 Object a = m.invoke(this, (@ReflectBottom Object[]) null);
+        } catch (Exception ignore) {
+        }
+    }
+
+    public void pass1b(@ReflectBottom MethodTest this ) {
+        try {
+            Class<?> c = Class.forName("MethodTest$SuperClass");
+            Method m = c.getMethod("getA", (Class[]) null);
             @Sibling1 Object a = m.invoke(this, (@ReflectBottom Object[]) null);
         } catch (Exception ignore) {
         }
@@ -67,7 +77,19 @@ public class MethodTest {
         } catch (Exception ignore) {
         }
     }
-
+    public void pass4b(@ReflectBottom MethodTest this) {
+        String str = "setA";
+        @Sibling1 int val1 = sibling1;
+        @Sibling1 Integer val2 = val1;
+        try {
+            //
+            Class<?> c = Class.forName("MethodTest$SuperClass");
+            Method m = c.getMethod(str, int.class);
+            m.invoke(this, val1);
+            m.invoke(this, val2);
+        } catch (Exception ignore) {
+        }
+    }
     // Test resolution of methods declared in super class
     public void pass5(@ReflectBottom MethodTest this) {
         try {
@@ -144,6 +166,16 @@ public class MethodTest {
         }
     }
 
+    public void pass11b() {
+        try {
+            Class<?> c = getClass();
+            Method m = c
+                    .getMethod("convertSibling2ToSibling1", new Class[] { Integer.class });
+            @Sibling1 Object o = m.invoke(null, sibling2);
+        } catch (Exception ignore) {
+        }
+    }
+
     // Test .class on inner class
     public void pass12() {
         try {
@@ -154,12 +186,13 @@ public class MethodTest {
         }
     }
 
+    boolean flag = false;
     // Test lub of return types
     public void testLubReturnPass() {
         try {
             Class<?> c = Class.forName("MethodTest$SuperClass");
             Method m;
-            if (c != null) {
+            if (flag) {
                 m = c.getMethod("getA", new Class[0]);
             } else {
                 m = c.getMethod("getB", new Class[0]);
@@ -168,11 +201,12 @@ public class MethodTest {
         } catch (Exception ignore) {
         }
     }
+
     public void testLubReturnFail() {
         try {
             Class<?> c = Class.forName("MethodTest$SuperClass");
             Method m;
-            if (c != null) {
+            if (flag) {
                 m = c.getMethod("getA", new Class[0]);
             } else {
                 m = c.getMethod("getB", new Class[0]);
@@ -181,6 +215,9 @@ public class MethodTest {
             @ReflectBottom Object o = m.invoke(new SuperClass(), new @ReflectBottom Object @ReflectBottom [0]);
         } catch (Exception ignore) {
         }
+    }
+
+    public void test(){
     }
 
     public void fail1() {
@@ -258,9 +295,6 @@ public class MethodTest {
         try {
             Class<?> c = MethodTest.class;
             Method m = c.getMethod("convertSibling2ToSibling1", new Class[]{Integer.class});
-            // TODO: The required bottom type for the receiver of a static
-            // method might be overly conservative. 
-            //:: error: (argument.type.incompatible)
             @Sibling1 Object o = m.invoke(inst, sibling2);
         } catch (Exception ignore) {}
     }
@@ -276,6 +310,42 @@ public class MethodTest {
         }
     }
 
+    public void bug(@ReflectBottom MethodTest this) {
+        String str = "setA";
+        @Sibling1 int val1 = sibling1;
+        @Sibling1 Object[] args = new Object[]{val1};
+        try {
+            //
+            Class<?> c = Class.forName("MethodTest$SuperClass");
+
+            Method m = c.getMethod(str, int.class);
+            // This error is a bug.
+            // See DefaultReflectionResolver.resolveMethodCall(...)
+            // for details.
+            //:: error: (argument.type.incompatible)
+            m.invoke(this, args);
+        } catch (Exception ignore) {
+        }
+    }
+
+    public void bug2(@ReflectBottom MethodTest this) {
+        String str = "setAB";
+        @Sibling1 int val1 = sibling1;
+        @Sibling2 int val2 = sibling2;
+
+        Object[] args = new Object[]{val1, val2};
+        try {
+            //
+            Class<?> c = Class.forName("MethodTest$SuperClass");
+            Method m = c.getMethod(str, int.class, int.class);
+            // This error is a bug.
+            // See DefaultReflectionResolver.resolveMethodCall(...)
+            // for details.
+            //:: error: (argument.type.incompatible)
+            m.invoke(this, args);
+        } catch (Exception ignore) {
+        }
+    }
     public static @Sibling1 int convertSibling2ToSibling1(@Sibling2 int a) {
         return (@Sibling1 int) 1;
     }

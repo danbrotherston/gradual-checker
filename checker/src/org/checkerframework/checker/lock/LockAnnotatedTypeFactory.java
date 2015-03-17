@@ -8,16 +8,23 @@ import org.checkerframework.checker.lock.qual.LockPossiblyHeld;
 import org.checkerframework.dataflow.qual.LockingFree;
 import org.checkerframework.dataflow.qual.SideEffectFree;
 import org.checkerframework.framework.type.*;
-import org.checkerframework.framework.type.typeannotator.ImplicitsTypeAnnotator;
+import org.checkerframework.framework.type.treeannotator.ListTreeAnnotator;
+import org.checkerframework.framework.type.treeannotator.TreeAnnotator;
 import org.checkerframework.framework.util.GraphQualifierHierarchy;
 import org.checkerframework.framework.util.MultiGraphQualifierHierarchy.MultiGraphFactory;
 import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.Pair;
 
+import java.lang.annotation.Annotation;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.VariableElement;
+
+import com.sun.source.tree.Tree;
 
 /**
  * LockAnnotatedTypeFactory builds types with LockHeld and LockPossiblyHeld annotations.
@@ -28,7 +35,7 @@ import javax.lang.model.element.VariableElement;
  *
  * However, there are a number of other annotations used in conjunction with these annotations
  * to enforce proper locking. Consult the Lock Checker documentation at
- * http://types.cs.washington.edu/checker-framework/current/checker-framework-manual.html#lock-checker
+ * http://types.cs.washington.edu/checker-framework/current/checker-framework-manual.html#lock-checker"
  */
 public class LockAnnotatedTypeFactory
     extends GenericAnnotatedTypeFactory<CFValue, LockStore, LockTransfer, LockAnalysis> {
@@ -36,12 +43,20 @@ public class LockAnnotatedTypeFactory
     /** Annotation constants */
     protected final AnnotationMirror LOCKHELD, LOCKPOSSIBLYHELD, SIDEEFFECTFREE;
 
+    // Cache for the lock annotations
+    protected final Set<Class<? extends Annotation>> lockAnnos;
+
     public LockAnnotatedTypeFactory(BaseTypeChecker checker, boolean useFlow) {
         super(checker, useFlow);
 
         LOCKHELD = AnnotationUtils.fromClass(elements, LockHeld.class);
         LOCKPOSSIBLYHELD = AnnotationUtils.fromClass(elements, LockPossiblyHeld.class);
         SIDEEFFECTFREE = AnnotationUtils.fromClass(elements, SideEffectFree.class);
+
+        Set<Class<? extends Annotation>> tempLockAnnos = new HashSet<>();
+        tempLockAnnos.add(LockHeld.class);
+        tempLockAnnos.add(LockPossiblyHeld.class);
+        lockAnnos = Collections.unmodifiableSet(tempLockAnnos);
 
         // This alias is only true for the Lock Checker. All other checkers must
         // ignore the @LockingFree annotation.
@@ -57,9 +72,8 @@ public class LockAnnotatedTypeFactory
         return new LockQualifierHierarchy(factory);
     }
 
-    /*
     @Override
-    protected TreeAnnotator createTreeAnnotator() {
+    public TreeAnnotator createTreeAnnotator() {
         return new ListTreeAnnotator(
                 super.createTreeAnnotator(),
                 new LockTreeAnnotator(this)
@@ -71,7 +85,6 @@ public class LockAnnotatedTypeFactory
             super(atypeFactory);
         }
     }
-    */
 
     @Override
     protected LockAnalysis createFlowAnalysis(List<Pair<VariableElement, CFValue>> fieldValues) {
@@ -83,10 +96,28 @@ public class LockAnnotatedTypeFactory
         return new LockTransfer((LockAnalysis) analysis,(LockChecker)this.checker);
     }
 
+    protected AnnotatedTypeMirror getDeclaredAndDefaultedAnnotatedType(Tree tree) {
+        shouldCache = false;
+
+        AnnotatedTypeMirror type = getAnnotatedType(tree);
+
+        shouldCache = true;
+
+        return type;
+    }
+
+    /**
+     * @return The list of annotations of the lock type system.
+     */
+    public Set<Class<? extends Annotation>> getLockAnnotations() {
+        return lockAnnos;
+    }
+
     class LockQualifierHierarchy extends GraphQualifierHierarchy {
 
         public LockQualifierHierarchy(MultiGraphFactory f) {
             super(f, LOCKHELD);
         }
+
     }
 }

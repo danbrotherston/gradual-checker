@@ -1,11 +1,10 @@
 package org.checkerframework.qualframework.base;
 
-import org.checkerframework.framework.type.AnnotatedTypeMirror;
-import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedTypeVariable;
 import org.checkerframework.qualframework.base.QualifiedTypeMirror.QualifiedTypeVariable;
 
-import javax.lang.model.type.TypeVariable;
 import java.util.Map;
+
+import javax.lang.model.type.TypeVariable;
 
 /**
  * TypeVariableSubstitutor replaces type variables from a declaration with arguments to its use.
@@ -25,8 +24,9 @@ public class TypeVariableSubstitutor<Q> {
                 "yet supported by the qualifier parameter framework.");
     }
 
+    // @see doesn't work because the method has protected visibility
     /**
-     * @see org.checkerframework.framework.type.TypeVariableSubstitutor#substituteTypeVariable(AnnotatedTypeMirror, AnnotatedTypeVariable)
+     * see org.checkerframework.framework.type.TypeVariableSubstitutor#substituteTypeVariable(AnnotatedTypeMirror, AnnotatedTypeVariable)
      */
     protected QualifiedTypeMirror<Q> substituteTypeVariable(final QualifiedTypeMirror<Q> argument,
             final QualifiedTypeVariable<Q> use) {

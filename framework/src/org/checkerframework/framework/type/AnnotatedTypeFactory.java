@@ -6,14 +6,11 @@ import org.checkerframework.checker.javari.qual.Mutable;
 import org.checkerframework.checker.nullness.qual.Nullable;
 */
 
-import com.sun.source.tree.AssignmentTree;
-import com.sun.source.tree.LambdaExpressionTree;
-import com.sun.source.tree.MemberReferenceTree;
-import com.sun.source.tree.TypeCastTree;
-import com.sun.tools.javac.code.Type;
-import com.sun.tools.javac.processing.JavacProcessingEnvironment;
-import com.sun.tools.javac.util.Context;
 import org.checkerframework.common.basetype.BaseTypeChecker;
+import org.checkerframework.common.reflection.DefaultReflectionResolver;
+import org.checkerframework.common.reflection.MethodValAnnotatedTypeFactory;
+import org.checkerframework.common.reflection.MethodValChecker;
+import org.checkerframework.common.reflection.ReflectionResolver;
 import org.checkerframework.dataflow.qual.SideEffectFree;
 import org.checkerframework.framework.qual.FromByteCode;
 import org.checkerframework.framework.qual.FromStubFile;
@@ -87,20 +84,27 @@ import javax.tools.Diagnostic.Kind;
 //@jdk.Exported and therefore somewhat safe to use.
 //Try to avoid using non-@jdk.Exported classes.
 import com.sun.source.tree.AnnotationTree;
+import com.sun.source.tree.AssignmentTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.IdentifierTree;
-import com.sun.source.tree.MemberSelectTree;
+import com.sun.source.tree.LambdaExpressionTree;
+import com.sun.source.tree.MemberReferenceTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.NewArrayTree;
 import com.sun.source.tree.NewClassTree;
 import com.sun.source.tree.ReturnTree;
 import com.sun.source.tree.Tree;
+import com.sun.source.tree.TypeCastTree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
+import com.sun.tools.javac.code.Symbol.MethodSymbol;
+import com.sun.tools.javac.code.Type;
+import com.sun.tools.javac.processing.JavacProcessingEnvironment;
+import com.sun.tools.javac.util.Context;
 
 /**
  * The methods of this class take an element or AST node, and return the
@@ -243,6 +247,12 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
     private final AnnotationMirror fromByteCode;
 
     /**
+     * Object that is used to resolve reflective method calls, if reflection
+     * resolution is turned on.
+     */
+    protected ReflectionResolver reflectionResolver;
+
+    /**
      * Constructs a factory from the given {@link ProcessingEnvironment}
      * instance and syntax tree root. (These parameters are required so that
      * the factory may conduct the appropriate annotation-gathering analyses on
@@ -305,8 +315,25 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
         addInheritedAnnotation(AnnotationUtils.fromClass(elements,
                 org.checkerframework.dataflow.qual.LockingFree.class));
 
+        initilizeReflectionResolution();
+
         if (this.getClass().equals(AnnotatedTypeFactory.class)) {
             this.buildIndexTypes();
+        }
+    }
+
+    protected void initilizeReflectionResolution() {
+        if (checker.shouldResolveReflection()) {
+            boolean debug = "debug".equals(checker.getOption("resolveReflection"));
+
+            MethodValChecker methodValChecker = checker
+                    .getSubchecker(MethodValChecker.class);
+            assert methodValChecker != null : "AnnotatedTypeFactory: reflection resolution was requested, but MethodValChecker isn't a subchecker.";
+            MethodValAnnotatedTypeFactory methodValATF = (MethodValAnnotatedTypeFactory) methodValChecker
+                    .getAnnotationProvider();
+
+            reflectionResolver = new DefaultReflectionResolver(checker,
+                    methodValATF, debug);
         }
     }
 
@@ -316,6 +343,7 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
     public void setRoot(/*@Nullable*/ CompilationUnitTree root) {
         this.root = root;
         treePathCache.clear();
+        pathHack.clear();
 
         // There is no need to clear the following caches, they
         // are all limited by CACHE_SIZE.
@@ -462,7 +490,6 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
     /**
      * TypeVariableSubstitutor provides a method to replace type parameters with
      * their arguments.
-     * @return
      */
     protected TypeVariableSubstitutor createTypeVariableSubstitutor() {
         return new TypeVariableSubstitutor();
@@ -1082,7 +1109,13 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
             // When visiting an executable type, skip the receiver so we
             // never inherit class annotations there.
 
-            scan(type.getReturnType(), p);
+            // Also skip constructor return types (which somewhat act like
+            // the receiver).
+            MethodSymbol methodElt = (MethodSymbol)type.getElement();
+            if (methodElt == null || !methodElt.isConstructor()) {
+                scan(type.getReturnType(), p);
+            }
+
             scanAndReduce(type.getParameterTypes(), p, null);
             scanAndReduce(type.getThrownTypes(), p, null);
             scanAndReduce(type.getTypeVariables(), p, null);
@@ -1454,7 +1487,12 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
     public Pair<AnnotatedExecutableType, List<AnnotatedTypeMirror>> methodFromUse(MethodInvocationTree tree) {
         ExecutableElement methodElt = TreeUtils.elementFromUse(tree);
         AnnotatedTypeMirror receiverType = getReceiverType(tree);
-        return methodFromUse(tree, methodElt, receiverType);
+
+        Pair<AnnotatedExecutableType, List<AnnotatedTypeMirror>> mfuPair =  methodFromUse(tree, methodElt, receiverType);
+        if (checker.shouldResolveReflection() && reflectionResolver.isReflectiveMethodInvocation(tree)) {
+            mfuPair = reflectionResolver.resolveReflectiveCall(this, tree, mfuPair);
+        }
+        return mfuPair;
     }
 
     public Pair<AnnotatedExecutableType, List<AnnotatedTypeMirror>> methodFromUse(ExpressionTree tree,
@@ -1484,7 +1522,50 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
             methodType = (AnnotatedExecutableType) typeVarSubstitutor.substitute(typeVarMapping, methodType);
         }
 
+        if (tree.getKind() == Tree.Kind.METHOD_INVOCATION
+         && TreeUtils.isGetClassInvocation((MethodInvocationTree) tree, processingEnv)) {
+            adaptGetClassReturnTypeToReceiver(methodType, receiverType);
+        }
+
         return Pair.of(methodType, typeargs);
+    }
+
+    /**
+     * Java special cases the return type of getClass.  Though the method has a return type of {@code Class<?>},
+     * the compiler special cases this return type and changes the bound of the type argument to the
+     * erasure of the receiver type.  e.g.,
+     *
+     * x.getClass() has the type {@code Class< ? extends erasure_of_x >}
+     * someInteger.getClass() has the type {@code Class< ? extends Integer >}
+     *
+     * @param getClassType This must be a type representing a call to Object.getClass otherwise
+     *                     a runtime exception will be thrown
+     * @param receiverType The receiver type of the method invocation (not the declared receiver type)
+     */
+    protected static void adaptGetClassReturnTypeToReceiver(final AnnotatedExecutableType getClassType,
+                                                            final AnnotatedTypeMirror receiverType) {
+        final AnnotatedTypeMirror newBound = receiverType.getErased();
+
+        final AnnotatedTypeMirror returnType = getClassType.getReturnType();
+        if ( returnType == null || !(returnType.getKind() == TypeKind.DECLARED)
+          || ((AnnotatedDeclaredType) returnType).getTypeArguments().size() != 1 ) {
+            ErrorReporter.errorAbort(
+                    "Unexpected type passed to AnnotatedTypes.adaptGetClassReturnTypeToReceiver\n"
+                            + "getClassType=" + getClassType + "\n"
+                            + "receiverType=" + receiverType);
+        }
+
+        final AnnotatedDeclaredType returnAdt = (AnnotatedDeclaredType) getClassType.getReturnType();
+        final List<AnnotatedTypeMirror> typeArgs = returnAdt.getTypeArguments();
+
+        //usually, the only locations that will add annotations to the return type are getClass in stub files
+        //defaults and propagation tree annotator.  Since getClass is final they cannot come from source code.
+        //Also, since the newBound is an erased type we have no type arguments.  So, we just copy the annotations
+        //from the bound of the declared type to the new bound.
+        final AnnotatedWildcardType classWildcardArg = (AnnotatedWildcardType) typeArgs.get(0);
+        newBound.replaceAnnotations(classWildcardArg.getExtendsBound().getAnnotations());
+
+        classWildcardArg.setExtendsBound(newBound);
     }
 
     /**
@@ -1620,6 +1701,12 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
                 // TODO: Find a way to determine annotated type arguments.
                 // Look at what Attr and Resolve are doing and rework this whole method.
             }
+            break;
+
+        case ARRAY:
+            // This new class is in the initializer of an array.
+            // The array being created can't have a generic component type,
+            // so nothing to be done.
             break;
         case TYPEVAR:
             // TODO: this should NOT be necessary.
@@ -2217,7 +2304,7 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
                 }
                 // We couldn't handle the stubPath -> error message.
                 checker.message(Kind.NOTE,
-                        "Did not find stub file or files within directory: " + stubPath);
+                        "Did not find stub file or files within directory: " + stubPath + " " + new File(stubPath).getAbsolutePath());
             }
             for (StubResource resource : stubs) {
                 InputStream stubStream;
@@ -2483,9 +2570,28 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
      * org.checkerframework.framework.type.AnnotatedTypeFactory.fromTypeTree(Tree)
      */
     public AnnotatedWildcardType getUninferredWildcardType(AnnotatedTypeVariable typeVar) {
-        WildcardType wc = types.getWildcardType(typeVar.getUnderlyingType().getUpperBound(), null);
+        final boolean intersectionType;
+        final TypeMirror boundType;
+        if (typeVar.getUpperBound().getKind() == TypeKind.INTERSECTION) {
+            boundType =
+                    typeVar.getUpperBound()
+                           .directSuperTypes()
+                           .get(0)
+                           .getUnderlyingType();
+            intersectionType = true;
+        } else {
+            boundType = typeVar.getUnderlyingType().getUpperBound();
+            intersectionType = false;
+        }
+
+        WildcardType wc = types.getWildcardType(boundType, null);
         AnnotatedWildcardType wctype = (AnnotatedWildcardType) AnnotatedTypeMirror.createType(wc, this, false);
-        wctype.setExtendsBound(typeVar.getUpperBound().deepCopy());
+        if (!intersectionType) {
+            wctype.setExtendsBound(typeVar.getUpperBound().deepCopy());
+        } else {
+            //TODO: This probably doesn't work if the type has a type argument
+            wctype.getExtendsBound().addAnnotations(typeVar.getUpperBound().getAnnotations());
+        }
         wctype.setSuperBound(typeVar.getLowerBound().deepCopy());
         wctype.addAnnotations(typeVar.getAnnotations());
         wctype.setTypeArgHack();

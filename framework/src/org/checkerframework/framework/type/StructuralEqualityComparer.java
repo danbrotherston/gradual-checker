@@ -1,23 +1,29 @@
 package org.checkerframework.framework.type;
 
+import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedArrayType;
+import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedDeclaredType;
+import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedIntersectionType;
+import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedNullType;
+import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedPrimitiveType;
+import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedTypeVariable;
+import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedWildcardType;
 import org.checkerframework.framework.type.visitor.AbstractAtmComboVisitor;
-import org.checkerframework.framework.type.visitor.AtmComboVisitor;
 import org.checkerframework.framework.type.visitor.VisitHistory;
 import org.checkerframework.framework.util.AnnotatedTypes;
-import org.checkerframework.framework.util.PluginUtil;
 import org.checkerframework.framework.util.AtmCombo;
+import org.checkerframework.framework.util.PluginUtil;
 import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.ErrorReporter;
 import org.checkerframework.javacutil.InternalUtils;
 import org.checkerframework.javacutil.TypesUtils;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.util.Types;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.checkerframework.framework.type.AnnotatedTypeMirror.*;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.util.Types;
+
 /**
  * A visitor used to compare two type mirrors for "structural" equality.  Structural equality
  * implies that, for two objects, all fields are also structurally equal and for primitives
@@ -33,7 +39,7 @@ public class StructuralEqualityComparer extends AbstractAtmComboVisitor<Boolean,
     //TODO: THE PROBLEM IS THIS CLASS SHOULD FAIL WHEN INCOMPARABLE TYPES ARE COMPARED BUT
     //TODO: TO CURRENTLY SUPPORT THE BUGGY inferTypeArgs WE FALL BACK TO the RawnessComparer
     //TODO: WHICH IS CLOSE TO THE OLD TypeHierarchy behavior
-    private DefaultRawnessComparer fallback;
+    private final DefaultRawnessComparer fallback;
 
 
     //explain this one
@@ -63,18 +69,15 @@ public class StructuralEqualityComparer extends AbstractAtmComboVisitor<Boolean,
      * type1.getClass().equals(type2.getClass()) must be true.  However, because the Checker Framework
      * sometimes "infers" Typevars to be Wildcards, we allow the combination Wildcard,Typevar.  In this
      * case, the two types are "equal" if their bounds are.
-     * @param type1
-     * @param type2
      * @return true if type1 and type2 are equal
      */
     public boolean areEqual(final AnnotatedTypeMirror type1, final AnnotatedTypeMirror type2 ) {
-        return AtmCombo.accept(type1, type2, new VisitHistory(this), this);
+        return AtmCombo.accept(type1, type2, new VisitHistory(), this);
     }
 
     /**
      * The same as areEqual(type1, type2) except now a visited is passed along in order to avoid
      * infinite recursion on recursive bounds.  This method is only used internally to EqualityComparer.
-     * @return
      */
     public boolean areEqual(final AnnotatedTypeMirror type1, final AnnotatedTypeMirror type2,
                             final VisitHistory visited ) {
@@ -120,8 +123,6 @@ public class StructuralEqualityComparer extends AbstractAtmComboVisitor<Boolean,
     /**
      * Compare each type in types1 and types2 pairwise and return true if they are all equal.  This method
      * throws an exceptions if types1.size() != types2.size()
-     * @param types1
-     * @param types2
      * @param visited A store of what types have already been visited
      * @return true if for each pair (t1 = types1.get(i); t2 = types2.get(i)), areEqual(t1,t2)
      */
@@ -152,10 +153,6 @@ public class StructuralEqualityComparer extends AbstractAtmComboVisitor<Boolean,
     /**
      * First check visited to see if type1 and type2 have been compared once already.
      * If so return true; otherwise compare them and add them to visited
-     * @param type1
-     * @param type2
-     * @param visited
-     * @return
      */
     protected boolean checkOrAreEqual(final AnnotatedTypeMirror type1, final AnnotatedTypeMirror type2,
                                       final VisitHistory visited ) {

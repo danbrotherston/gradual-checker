@@ -4,27 +4,34 @@ package org.checkerframework.framework.flow;
 import org.checkerframework.checker.nullness.qual.Nullable;
 */
 
-import java.util.*;
-
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Types;
-
 import org.checkerframework.dataflow.analysis.AbstractValue;
 import org.checkerframework.dataflow.qual.Pure;
 import org.checkerframework.dataflow.qual.SideEffectFree;
 import org.checkerframework.dataflow.util.HashCodeUtils;
-import org.checkerframework.framework.type.*;
+import org.checkerframework.framework.type.AnnotatedTypeFactory;
+import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedArrayType;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedIntersectionType;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedTypeVariable;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedWildcardType;
+import org.checkerframework.framework.type.GenericAnnotatedTypeFactory;
+import org.checkerframework.framework.type.QualifierHierarchy;
+import org.checkerframework.framework.type.TypeHierarchy;
+import org.checkerframework.framework.type.visitor.AnnotatedTypeMerger;
 import org.checkerframework.framework.util.AnnotatedTypes;
 import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.ErrorReporter;
 import org.checkerframework.javacutil.InternalUtils;
+
+import java.util.Collection;
+import java.util.Set;
+
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.type.IntersectionType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Types;
 
 /**
  * An implementation of an abstract value used by the Checker Framework org.checkerframework.dataflow
@@ -153,6 +160,10 @@ public abstract class CFAbstractValue<V extends CFAbstractValue<V>> implements
         TypeMirror underlyingType = InternalUtils.greatestLowerBound(analysis
                 .getEnv(), getType().getUnderlyingType(), other.getType()
                 .getUnderlyingType());
+
+        underlyingType = handleTypeVarIntersections(
+                getType().getUnderlyingType(), other.getType().getUnderlyingType(), underlyingType);
+
         if (underlyingType.getKind() == TypeKind.ERROR
                 || underlyingType.getKind() == TypeKind.NONE) {
             // pick one of the option
@@ -164,8 +175,6 @@ public abstract class CFAbstractValue<V extends CFAbstractValue<V>> implements
         }
         AnnotatedTypeMirror result = AnnotatedTypeMirror.createType(
                 underlyingType, analysis.getTypeFactory(), false);
-        QualifierHierarchy qualHierarchy = analysis.getTypeFactory()
-                .getQualifierHierarchy();
         AnnotatedTypeMirror otherType = other.getType();
 
         if (mostSpecific(analysis.getTypeFactory(), getType(), otherType,
@@ -174,6 +183,41 @@ public abstract class CFAbstractValue<V extends CFAbstractValue<V>> implements
         } else {
             return backup;
         }
+    }
+
+    /**
+     * TODO: RETHINK THESE WHEN WE ACTUALLY CONSIDER THE INTENDED SEMANTICS OF INTERSECTIONS
+     * When data flow encounters the following:
+     * <T> void method(T t) {
+     *     if (t instance of Cloneable) {
+     *     }
+     * }
+     *
+     * We will take glb(T, Cloneable) and it will yield T & Cloneable
+     * Much of our handling of intersection types relies on the fact that you cannot write a
+     * type variable in an intersection bound.  This will cause many errors.
+     *
+     * Since t must be a type T, it is useful just to use T itself as the mostSpecific type,
+     * so we will use it for now.
+     */
+    private static TypeMirror handleTypeVarIntersections(TypeMirror thisType, TypeMirror other, TypeMirror glbType) {
+
+        TypeMirror typeVar = null;
+        if (  thisType.getKind() == TypeKind.TYPEVAR ) {
+            typeVar = thisType;
+        } else if ( other.getKind() == TypeKind.TYPEVAR ) {
+            typeVar = other;
+        }
+
+        if (typeVar != null && glbType.getKind() == TypeKind.INTERSECTION) {
+            for (TypeMirror bound : ((IntersectionType) glbType).getBounds()) {
+                if (bound.equals(typeVar)) {
+                    return typeVar;
+                }
+            }
+        }
+
+        return glbType;
     }
 
     /**
@@ -191,11 +235,7 @@ public abstract class CFAbstractValue<V extends CFAbstractValue<V>> implements
 
         final TypeKind resultKind = result.getKind();
         if( resultKind == TypeKind.TYPEVAR ) {
-            return mostSpecificTypeVariable(
-                        typeFactory.getProcessingEnv().getTypeUtils(),
-                        typeFactory.getTypeHierarchy(),
-                        typeFactory.getQualifierHierarchy(),
-                        a, b, backup, (AnnotatedTypeVariable) result);
+            return mostSpecificTypeVariable(typeFactory, a, b, backup, (AnnotatedTypeVariable) result);
 
         } else {
             final QualifierHierarchy qualHierarchy = typeFactory.getQualifierHierarchy();
@@ -300,12 +340,18 @@ public abstract class CFAbstractValue<V extends CFAbstractValue<V>> implements
      * @return True if the result was annotated in all hierarchy, false if the result could not be
      *         annotated in one or more annotation hierarchies
      */
-    public static boolean mostSpecificTypeVariable(final Types types,
-                                                   final TypeHierarchy typeHierarchy,
-                                                   final QualifierHierarchy qualifierHierarchy,
+    public static boolean mostSpecificTypeVariable(final AnnotatedTypeFactory typeFactory,
                                                    final AnnotatedTypeMirror type1, final AnnotatedTypeMirror type2,
                                                    final AnnotatedTypeMirror backup,
                                                    final AnnotatedTypeVariable result) {
+        final Types types = typeFactory.getProcessingEnv().getTypeUtils();
+        final TypeHierarchy typeHierarchy = typeFactory.getTypeHierarchy();
+        final QualifierHierarchy qualifierHierarchy = typeFactory.getQualifierHierarchy();
+
+        final AnnotatedTypeVariable declaredType =
+           (AnnotatedTypeVariable) typeFactory.getAnnotatedType(result.getUnderlyingType().asElement());
+        AnnotatedTypeMerger.merge(declaredType, result);
+
         boolean annotated = true;
         for(final AnnotationMirror top : qualifierHierarchy.getTopAnnotations()) {
             if(typeHierarchy.isSubtype(type1, type2, top)) {

@@ -1603,6 +1603,11 @@ name (as in \verb|\label{bellyrub-examples}|) and not with ``\<sec:>''.
 These conventions are for the benefit of the Hevea program that produces
 the HTML version of the manual.
 
+Don't forget to write Javadoc for any annotations that the checker uses.
+That is part of the documentation and is the first thing that many users
+may see.  Also ensure that the Javadoc links back to the manual, using the
+\<@checker\_framework.manual> custom Javadoc tag.
+
 
 \section{javac implementation survival guide\label{javac-tips}}
 
@@ -1762,6 +1767,29 @@ mailing list archives at
 (subscribe at
 \url{http://mail.openjdk.java.net/mailman/listinfo/compiler-dev}).
 
+
+\section{Integrating a checker with the Checker Framework\label{integrating-a-checker}}
+
+% First version of how to integrate a new checker into the release.
+% TODO: what steps are missing?
+
+To integrate a new checker with the Checker Framework release, perform
+the following:
+
+\begin{itemize}
+
+\item Add a \code{XXX-tests} build target and ensure all tests pass.
+
+\item Make sure \code{all-tests} tests the new checker.
+
+\item Extend the \code{check-compilermsgs} target to include the
+compiler messages property file of the new checker in
+the \code{checker-args} list.
+
+\item Make sure \code{check-compilermsgs} and \code{check-purity} run
+without warnings or errors.
+
+\end{itemize}
 
 
 % LocalWords:  plugin javac's SourceChecker AbstractProcessor getMessages quals

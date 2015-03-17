@@ -22,6 +22,20 @@ import javax.lang.model.type.TypeKind;
  */
 public class AnnotatedTypeMerger extends AnnotatedTypeComparer<Void> {
 
+    public static void merge(final AnnotatedTypeMirror from, final AnnotatedTypeMirror to) {
+        if (from == to) {
+            ErrorReporter.errorAbort("From == to");
+        }
+        new AnnotatedTypeMerger().visit(from, to);
+    }
+
+    public static void merge(final AnnotatedTypeMirror from, final AnnotatedTypeMirror to, final AnnotationMirror top) {
+        if (from == to) {
+            ErrorReporter.errorAbort("From == to");
+        }
+        new AnnotatedTypeMerger(top).visit(from, to);
+    }
+
     //if top != null we replace only the annotations in the hierarchy of top
     private final AnnotationMirror top;
 
@@ -60,20 +74,6 @@ public class AnnotatedTypeMerger extends AnnotatedTypeComparer<Void> {
         }
     }
 
-    public static void merge(final AnnotatedTypeMirror from, final AnnotatedTypeMirror to) {
-        if (from == to) {
-            ErrorReporter.errorAbort("From == to");
-        }
-        new AnnotatedTypeMerger().visit(from, to);
-    }
-
-    public static void merge(final AnnotatedTypeMirror from, final AnnotatedTypeMirror to, final AnnotationMirror top) {
-        if (from == to) {
-            ErrorReporter.errorAbort("From == to");
-        }
-        new AnnotatedTypeMerger(top).visit(from, to);
-    }
-
     @Override
     public Void visitTypeVariable(AnnotatedTypeVariable from, AnnotatedTypeMirror to) {
         resolvePrimaries(from, to);
@@ -91,7 +91,6 @@ public class AnnotatedTypeMerger extends AnnotatedTypeComparer<Void> {
      * on substitution.  Therefore, in these cases we remove the primary annotation and rely on
      * the fact that the bounds are also merged into the type to.
      * @param from a type variable or wildcard
-     * @param to
      */
     public void resolvePrimaries(AnnotatedTypeMirror from, AnnotatedTypeMirror to) {
         if (from.getKind() == TypeKind.WILDCARD || from.getKind() == TypeKind.TYPEVAR) {

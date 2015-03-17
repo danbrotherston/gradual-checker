@@ -120,11 +120,11 @@ qualifier on a type --- the qualifier that the checkers treat as being present.
 
 \begin{itemize}
 \item
-  In the Nullness type system,
+  In the Nullness type system (see \chapterpageref{nullness-checker}),
   \<enum> values, string literals, and method receivers are always non-null.
 \item
-  In the Interning type system, string literals
-  and \<enum> values are always interned.
+  In the Interning type system (see \chapterpageref{interning-checker}),
+  string literals and \<enum> values are always interned.
 \end{itemize}
 
   If the type has an implicit qualifier, then it is an error to write an
@@ -975,8 +975,9 @@ from superclass definitions.
 \subsection{Assertions\label{type-refinement-assertions}}
 
 If your code contains an \<assert> statement, then your code could behave
-in two different ways at run time, depending on whether you compile with or
-without the \<-ea> command-line option to javac.
+in two different ways at run time, depending on whether assertions are
+enabled or disabled
+via the \<-ea> or \<-da> command-line options to java.
 
 By default, the Checker Framework outputs warnings about any error that
 could happen at run time, whether assertions are enabled or disabled.
@@ -985,7 +986,11 @@ If you supply the \<-AassumeAssertionsAreEnabled> command-line option, then
 the Checker Framework assumes assertions are enabled.  If you supply the
 \<-AassumeAssertionsAreDisabled> command-line option, then the Checker
 Framework assumes assertions are disabled.  You may not supply both
-command-line options.
+command-line options.  It is uncommon to supply either one.
+
+These command-line arguments have no effect on processing of \<assert>
+statements whose message contains the text \<@AssumeAssertion>; see
+Section~\ref{assumeassertion}.
 
 
 % If you add a Javadoc link to this location, also add the qualifier to the
@@ -1056,8 +1061,9 @@ You may optionally omit a leading ``\<this.>'', just as in Java.  Thus,
 One unusual feature is that the method call is allowed to have side
 effects.  If a specification is going to be checked at run time via
 assertions, then the specification must not use methods with side
-effects.  But, our checking is at compile time, so we allow it.
-Also, the current implementation will never able to prove such
+effects.  But, the Checker Framework works at compile time, so it allows
+side effects.
+The current implementation will never able to prove such
 a contract, but it is able to use the information (when checking
 the method body with preconditions, or when checking the callers
 code with postconditions).  This can be useful to annotate trusted
@@ -1073,7 +1079,7 @@ methods precisely (e.g., \<java.io.BufferedReader.ready()>).
 % simpler than defining specification fields or ghost fields
 %% TODO: we may eventually have an @SpecField annotation
 
-(A side note:  The formal parameter syntax \<\#1> may seem less convenient
+(A side note:  The formal parameter syntax \<\#1> is less natural in source code
 than writing the formal parameter name.  This syntax is necessary because
 in the \<.class> file, no parameter name information is available.  Running
 the compiler without a checker should create legal annotations in the

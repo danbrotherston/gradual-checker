@@ -2,8 +2,9 @@ package tests.reflection;
 
 import javax.lang.model.element.AnnotationMirror;
 
+
+import org.checkerframework.common.basetype.BaseAnnotatedTypeFactory;
 import org.checkerframework.common.basetype.BaseTypeChecker;
-import org.checkerframework.common.reflection.ReflectionResolutionAnnotatedTypeFactory;
 import org.checkerframework.framework.qual.TypeQualifiers;
 import org.checkerframework.framework.type.*;
 import org.checkerframework.framework.type.treeannotator.ImplicitsTreeAnnotator;
@@ -14,6 +15,7 @@ import org.checkerframework.framework.util.GraphQualifierHierarchy;
 import org.checkerframework.framework.util.MultiGraphQualifierHierarchy.MultiGraphFactory;
 import org.checkerframework.javacutil.AnnotationUtils;
 
+import tests.reflection.qual.PolyReflection;
 import tests.reflection.qual.ReflectBottom;
 import tests.reflection.qual.Sibling1;
 import tests.reflection.qual.Sibling2;
@@ -27,9 +29,9 @@ import tests.reflection.qual.Top;
  *
  * @author rjust, smillst
  */
-@TypeQualifiers({ Top.class, Sibling1.class, Sibling2.class, ReflectBottom.class })
+@TypeQualifiers({ Top.class, Sibling1.class, Sibling2.class, ReflectBottom.class, PolyReflection.class })
 public final class ReflectionTestAnnotatedTypeFactory extends
-        ReflectionResolutionAnnotatedTypeFactory {
+        BaseAnnotatedTypeFactory {
     public ReflectionTestAnnotatedTypeFactory(BaseTypeChecker checker) {
         super(checker);
         postInit();

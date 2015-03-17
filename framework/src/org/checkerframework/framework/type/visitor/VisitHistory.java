@@ -2,7 +2,6 @@ package org.checkerframework.framework.type.visitor;
 
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedWildcardType;
-import org.checkerframework.framework.type.StructuralEqualityComparer;
 import org.checkerframework.framework.util.PluginUtil;
 import org.checkerframework.javacutil.AnnotationUtils;
 
@@ -25,7 +24,7 @@ import java.util.Set;
  *    E.g.
  *      AnnotatedWildcardType wc = ...
  *      wc.getEffectiveSuperBound().equals(wc.getEffectiveSuperBound())
- *      //tae above line will return false if the super bound is a wildcard
+ *      //the above line will return false if the super bound is a wildcard
  *      //because two wildcards are .equals only if they are also referentially (==) equal
  *      //and each call to getEffectiveSuperBound returns a copy of the original bound
  *
@@ -37,29 +36,14 @@ import java.util.Set;
  */
 public class VisitHistory {
 
-    private Set<Visit> visited;
+    private final Set<Visit> visited;
 
-    // We do not care if each component is exactly the same but instead care if their
-    // meaning is the same.  Equality can usually be handled by AnnotatedTypeMirror.equals
-    // But Wildcards are never .equals unless they are exactly the same reference.
-    // Sometimes, we do want to evaluate two wildcards to see if they are structurally
-    // equivalent, even if they are not the same wildcard.
-    // For instance, for the following example the two wildcards must be structurally
-    // equivalent to typecheck:
-    // List<List<? extends Object>> llo = new List<List<? extends Object>>
-    //
-    // To handle this case correctly we use an equality comparer on wildcards
-    private StructuralEqualityComparer equalityComparer;
-
-    public VisitHistory(final StructuralEqualityComparer equalityComparer) {
+    public VisitHistory() {
         this.visited = new HashSet<>();
-        this.equalityComparer = equalityComparer;
     }
 
     /**
      * Add a visit for type1 and type2.
-     * @param type1
-     * @param type2
      */
     public void add(final AnnotatedTypeMirror type1, final AnnotatedTypeMirror type2) {
         this.visited.add(new Visit(type1, type2));
@@ -68,8 +52,6 @@ public class VisitHistory {
     /**
      * Returns true if type1 and type2 (or an equivalent pair) have been passed to the
      * add method previously.
-     * @param type1
-     * @param type2
      * @return true if an equivalent pair has already been added to the history
      */
     public boolean contains(final AnnotatedTypeMirror type1, final AnnotatedTypeMirror type2) {
