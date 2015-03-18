@@ -373,7 +373,24 @@ public abstract class GenericAnnotatedTypeFactory<
 		    foundDefaultOtherwise = true;
                 }
             }
+	}
 
+	addUntypedDefaultsToQualifierDefaults(defs);
+
+        // If Unqualified is a supported qualifier, make it the default.
+        // This is for convenience only. Maybe remove.
+        AnnotationMirror unqualified = AnnotationUtils.fromClass(elements, Unqualified.class);
+        if (!foundDefaultOtherwise &&
+                this.isSupportedQualifier(unqualified)) {
+            defs.addAbsoluteDefault(unqualified,
+                    DefaultLocation.OTHERWISE);
+        }
+
+        return defs;
+    }
+
+    protected void addUntypedDefaultsToQualifierDefaults(QualifierDefaults defs) {
+	for (Class<? extends Annotation> qual : getSupportedTypeQualifiers()) {
 	    // Add defaults for untyped code if conservative untyped flag is passed.
 	    if (checker.hasOption("conservativeUntyped")) {
 		DefaultForInUntyped defaultForUntyped = qual.getAnnotation(DefaultForInUntyped.class);
@@ -399,17 +416,6 @@ public abstract class GenericAnnotatedTypeFactory<
 	      	}
 	    }
         }
-
-        // If Unqualified is a supported qualifier, make it the default.
-        // This is for convenience only. Maybe remove.
-        AnnotationMirror unqualified = AnnotationUtils.fromClass(elements, Unqualified.class);
-        if (!foundDefaultOtherwise &&
-                this.isSupportedQualifier(unqualified)) {
-            defs.addAbsoluteDefault(unqualified,
-                    DefaultLocation.OTHERWISE);
-        }
-
-        return defs;
     }
 
     /**
