@@ -3,6 +3,7 @@ package org.checkerframework.checker.gradualnullness;
 import org.checkerframework.checker.nullness.AbstractNullnessFbcChecker;
 import org.checkerframework.common.basetype.BaseTypeVisitor;
 import org.checkerframework.framework.qual.Dynamic;
+import org.checkerframework.framework.qual.StubFiles;
 import org.checkerframework.framework.qual.TypeQualifiers;
 
 /**
@@ -12,6 +13,7 @@ import org.checkerframework.framework.qual.TypeQualifiers;
  * a value.  It then performs runtime checks to ensure validity.
  */
 @TypeQualifiers({ Dynamic.class })
+@StubFiles("../nullness/astubs/gnu-getopt.astub")
 public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
     @Override
     protected BaseTypeVisitor<?> createSourceVisitor() {

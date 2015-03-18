@@ -1,5 +1,6 @@
 package tests;
 
+import org.checkerframework.checker.nullness.AbstractNullnessChecker;
 import org.checkerframework.framework.test.ParameterizedCheckerTest;
 import org.junit.runners.Parameterized.Parameters;
 
@@ -11,7 +12,11 @@ public class GradualNullnessTest extends ParameterizedCheckerTest {
     public GradualNullnessTest(File testFile) {
         super(testFile,
             org.checkerframework.checker.gradualnullness.GradualNullnessChecker.class,
-            "gradualnullness");
+            "gradualnullness",
+            "-AcheckPurityAnnotations",
+            "-Anomsgtext", "-Xlint:deprecation",
+            "-Alint=arrays:forbidnonnullcomponents,"
+                     + AbstractNullnessChecker.LINT_REDUNDANTNULLCOMPARISON);
     }
 
     @Parameters
