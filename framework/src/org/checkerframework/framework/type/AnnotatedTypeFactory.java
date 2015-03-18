@@ -528,14 +528,30 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
         }
 
         if (typeQualifiersAnnotation != null) {
-            Set<Class<? extends Annotation>> typeQualifiers = new HashSet<Class<? extends Annotation>>();
-            for (Class<? extends Annotation> qualifier : typeQualifiersAnnotation.value()) {
-                typeQualifiers.add(qualifier);
-            }
-            return Collections.unmodifiableSet(typeQualifiers);
+	    return getSupportedTypeQualifiersFromAnnotation(typeQualifiersAnnotation);
         }
 
         return Collections.emptySet();
+    }
+
+    /**
+     * Given an instance of a {@see TypeQualifiers} annotation, return an immutable set
+     * of type annotation classes specified by that annotation.
+     *
+     * @param typeQualifiersAnnotation The annotation to get the supported TypeQualifiers
+     *                                 from.
+     *
+     * @return An immutable set of classes specified by the given {@see TypeQualifiers}
+     *         annotation.
+     */
+    protected final Set<Class<? extends Annotation>> getSupportedTypeQualifiersFromAnnotation(
+           TypeQualifiers typeQualifiersAnnotation) {
+	Set<Class<? extends Annotation>> typeQualifiers = new HashSet<Class<? extends Annotation>>();
+	for (Class<? extends Annotation> qualifier : typeQualifiersAnnotation.value()) {
+	    typeQualifiers.add(qualifier);
+	}
+	
+	return Collections.unmodifiableSet(typeQualifiers);
     }
 
     /**
