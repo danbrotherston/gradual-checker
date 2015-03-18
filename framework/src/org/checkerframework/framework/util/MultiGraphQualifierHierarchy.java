@@ -93,7 +93,7 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
             Class<? extends Annotation> pqtopclass = QualifierPolymorphism.getPolymorphicQualifierTop(atypeFactory.getElementUtils(), qual);
             if (pqtopclass != null) {
                 AnnotationMirror pqtop = AnnotationUtils.fromClass(atypeFactory.getElementUtils(), pqtopclass);
-                if (QualifierPolymorphism.isPolyAll(qual)) {
+                if (QualifierPolymorphism.isPolyAllOrDynamic(qual)) {
                     // Use key null as marker for polyall
                     this.polyQualifiers.put(null, qual);
                 } else {

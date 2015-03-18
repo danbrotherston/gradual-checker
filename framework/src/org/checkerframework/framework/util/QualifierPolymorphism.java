@@ -1,5 +1,6 @@
 package org.checkerframework.framework.util;
 
+import org.checkerframework.framework.qual.Dynamic;
 import org.checkerframework.framework.qual.PolyAll;
 import org.checkerframework.framework.qual.PolymorphicQualifier;
 import org.checkerframework.framework.type.AnnotatedTypeFactory;
@@ -98,7 +99,7 @@ public class QualifierPolymorphism {
 
         Map<AnnotationMirror, AnnotationMirror> polys = new HashMap<AnnotationMirror, AnnotationMirror>();
         for (AnnotationMirror aam : qualhierarchy.getTypeQualifiers()) {
-            if (isPolyAll(aam)) {
+            if (isPolyAllOrDynamic(aam)) {
                 polys.put(null, aam);
                 continue;
             }
@@ -153,6 +154,19 @@ public class QualifierPolymorphism {
 
     public static boolean isPolyAll(AnnotationMirror qual) {
         return AnnotationUtils.areSameByClass(qual, PolyAll.class);
+    }
+
+    public static boolean isDynamic(AnnotationMirror qual) {
+	return AnnotationUtils.areSameByClass(qual, Dynamic.class);
+    }
+
+    /**
+     * Returns if the qualifier is equivalent to either Dynamic or PolyAll.
+     * TODO(danbrotherston): Consider making this general in some way, for qualifiers
+     *                       which apply to all type systems.
+     */
+    public static boolean isPolyAllOrDynamic(AnnotationMirror qual) {
+	return isDynamic(qual) || isPolyAll(qual);
     }
 
     // Returns null if the qualifier is not polymorphic.
