@@ -1,5 +1,7 @@
 package org.checkerframework.javacutil.trees;
 
+import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -24,6 +26,7 @@ import com.sun.source.tree.AssignmentTree;
 import com.sun.source.tree.BinaryTree;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.IfTree;
 import com.sun.source.tree.LiteralTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
@@ -34,6 +37,7 @@ import com.sun.source.tree.VariableTree;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.code.Type;
+import com.sun.tools.javac.model.JavacElements;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.TreeInfo;
@@ -263,6 +267,44 @@ public class TreeBuilder {
     }
 
     /**
+     * Builds an AST Tree to call a method designed by methodExpr,
+     * with two arguments designated by argExpr1 and argExpr2.
+     *
+     * @param methodExpr An expression denoting a method with two arguments.
+     * @param argExpr1 An expression denoting the first argument to the method.
+     * @param argExpr2 An expression denoting the second argument to the method.
+     * @return A MethodInvocationTree to call the method with its two arguments.
+     */
+    public MethodInvocationTree buildMethodInvocation(ExpressionTree methodExpr,
+						      ExpressionTree argExpr1,
+						      ExpressionTree argExpr2) {
+	return maker.App((JCTree.JCExpression) methodExpr,
+	        com.sun.tools.javac.util.List.of((JCTree.JCExpression) argExpr1,
+						 (JCTree.JCExpression) argExpr2));
+    }
+
+    /**
+     * Builds an AST Tree to call a method designated by methodExpr,
+     * with a list of arguments designated by argExprList.
+     *
+     * @param methodExpr An expression denoting a method with multiple arguments.
+     * @param argExprList A list of expressions representing the arguments to the
+     *                    method.
+     * @return a MethodInvocationTree to call the method with its arguments.
+     */
+    public MethodInvocationTree buildMethodInvocation(ExpressionTree methodExpr,
+						      List<ExpressionTree> argExprList) {
+	com.sun.tools.javac.util.List<JCTree.JCExpression> convertedArgs =
+	    com.sun.tools.javac.util.List.<JCTree.JCExpression>nil();
+	Collections.reverse(argExprList);
+	for (ExpressionTree argExpr : argExprList) {
+	    convertedArgs = convertedArgs.prepend((JCTree.JCExpression) argExpr);
+	}
+
+	return maker.App((JCTree.JCExpression) methodExpr, convertedArgs);
+    }
+
+    /**
      * Builds an AST Tree to declare and initialize a variable, with no modifiers.
      *
      * @param type  the type of the variable
@@ -411,6 +453,9 @@ public class TreeBuilder {
     }
 
     /**
+     * 
+
+    /**
      * Builds an AST Tree to access the valueOf() method of boxed type
      * such as Short or Float.
      *
@@ -461,6 +506,51 @@ public class TreeBuilder {
     }
 
     /**
+     * Gets a ClassSymbol element representing a given a class.  This class must be
+     * both in the current execution classpath as well as the compilation classpath.
+     * 
+     * @param clazz The class you wish to get a reference too.
+     * @param procEnv The ProcessingEnvironment in which this lookup will be compiled.
+     * @return Element The element representing the symbol of this class.
+     */
+    public Element getClassSymbolElement(Class<?> clazz, ProcessingEnvironment procEnv) {
+	JavacProcessingEnvironment javacEnv = (JavacProcessingEnvironment) procEnv;
+	JavacElements javacElem = (JavacElements) procEnv.getElementUtils();
+	return javacElem.getTypeElement(clazz.getName());
+    }
+
+    /**
+     * Creates a member select tree to access a given method from the given tree.
+     *
+     * @param method The method to access from the given tree.
+     * @param tree The tree on which to access the given method.
+     * @return A MemberSelectTree representing accessing the given method on the
+     *         given tree, or null if the method does not exist.
+     */
+    public MemberSelectTree buildMethodAccess(Method method, ExpressionTree tree) {
+	TypeMirror treeType = InternalUtils.typeOf(tree);
+	TypeElement treeElement = (TypeElement)((DeclaredType)treeType).asElement();
+
+	String methodName = method.getName();
+	for (ExecutableElement treeMethod :
+		 ElementFilter.methodsIn(elements.getAllMembers(treeElement))) {
+	    Name treeMethodName = treeMethod.getSimpleName();
+	    if (treeMethodName.contentEquals(methodName)) {
+		Symbol.MethodSymbol treeMethodSymbol = (Symbol.MethodSymbol) treeMethod;
+		Type.MethodType treeMethodType = (Type.MethodType) treeMethodSymbol.asType();
+
+		JCTree.JCFieldAccess treeMethodAccess =
+		    (JCTree.JCFieldAccess) maker.Select((JCTree.JCExpression) tree,
+							treeMethodSymbol);
+		treeMethodAccess.setType(treeMethodType);
+		return treeMethodAccess;
+	    }
+	}
+
+	return null;
+    }
+
+    /**
      * Builds an AST Tree to access the *Value() method of a
      * boxed type such as Short or Float, where * is the corresponding
      * primitive type (i.e. shortValue or floatValue).
@@ -500,6 +590,23 @@ public class TreeBuilder {
         primValueAccess.setType(methodType);
 
         return primValueAccess;
+    }
+
+    /**
+     * Builds an AST Tree to represent an If-else statement.
+     *
+     * @param cond An expression representing the If condition. 
+     *             It should type to boolean.
+     * @param ifPart A statement to execute if it "if" evaluates to true.
+     * @param elsePart A statement to execute if the "if" evaluates to false.
+     * @return an If Statement that is composed of the provided building blocks.
+     */
+    public IfTree buildIfStatement(ExpressionTree cond,
+				   StatementTree ifPart,
+				   StatementTree elsePart) {
+	return maker.If((JCTree.JCExpression) cond,
+			(JCTree.JCStatement) ifPart,
+			(JCTree.JCStatement) elsePart);
     }
 
     /**
