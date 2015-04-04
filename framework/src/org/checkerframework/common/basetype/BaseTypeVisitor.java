@@ -50,6 +50,7 @@ import org.checkerframework.framework.util.FlowExpressionParseUtil.FlowExpressio
 import org.checkerframework.framework.util.FlowExpressionParseUtil.FlowExpressionParseException;
 import org.checkerframework.framework.util.PluginUtil;
 import org.checkerframework.framework.util.QualifierPolymorphism;
+import org.checkerframework.framework.qual.Dynamic;
 import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.ElementUtils;
 import org.checkerframework.javacutil.ErrorReporter;
@@ -1835,6 +1836,15 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
 
         // TODO: integrate with subtype test.
         if (success) {
+	    AnnotationMirror dyn = AnnotationUtils.fromClass(elements, Dynamic.class);
+	    if (AnnotatedTypes.containsModifier(valueType, dyn) ||
+		AnnotatedTypes.containsModifier(varType, dyn)) {
+		success = dynamicCheck(valueType, varType, valueTree);
+	    }
+	}
+
+	// TODO: integrate with subtype test.
+	if (success) {
             for (Class<? extends Annotation> mono : atypeFactory.getSupportedMonotonicTypeQualifiers()) {
                 if (valueType.hasAnnotation(mono)
                         && varType.hasAnnotation(mono)) {
@@ -1864,6 +1874,38 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
             checker.report(Result.failure(errorKey,
                     valueTypeString, varTypeString), valueTree);
         }
+    }
+
+    /**
+     * This method performs two functions.  A type system which supports Dynamic types
+     * must override this function.  It is invoked whenever a dynamic type is encountered
+     * in a common assignment or pseudo-assignment.  The function returns a boolean value
+     * which should match a consistency check between the provided types (one of which will
+     * be partially dynamic.  This consistency relation should have the following properties:
+     *
+     * - Reflexive
+     * - Symmetric
+     * - NOT Transitive
+     *
+     * Intuitively, a consistency check should validate that types are equal (or compatible)
+     * where they are both known, and allow dynamic parts to match any parts.  Various
+     * consistency relations were presented by Jeremy Siek and Walid Taha in their gradual
+     * typing work.  However, most simple type systems using this framework should be able to
+     * return true here for all values since types should be entirely dynamic, or entirely
+     * static.
+     *
+     * The second thing this function should do is, insert, or make provisions to insert a
+     * runtime check to validate that at runtime, a valid value for the assignment context
+     * is provided.  See the {@see GradualNullnessChecker} for examples of how to do this.
+     *
+     * @param valueType The type of value being assigned into the varType.
+     * @param varType The type of the variable being assigned to.
+     * @return Whether the types are valid under the gradual typing consistency relation.
+     */
+    protected boolean dynamicCheck(AnnotatedTypeMirror valueType,
+				   AnnotatedTypeMirror varType,
+				   Tree valueTree) {
+	return false;
     }
 
     protected void checkArrayInitialization(AnnotatedTypeMirror type,
@@ -2585,7 +2627,7 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
         private boolean checkReceiverOverride() {
             // Check the receiver type.
             // isSubtype() requires its arguments to be actual subtypes with
-            // respect to JLS, but overrider receiver is not a subtype of the
+            // respect to  JLS, but overrider receiver is not a subtype of the
             // overridden receiver.  Hence copying the annotations.
             // TODO: this will need to be improved for generic receivers.
             AnnotatedTypeMirror overriddenReceiver =

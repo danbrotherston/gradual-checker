@@ -260,6 +260,9 @@ import com.sun.tools.javac.util.Log;
     // org.checkerframework.framework.source.SourceChecker.shutdownHook()
     "resourceStats",
 
+    // Verbose output.
+    "verbose",
+
 })
 public abstract class SourceChecker
     extends AbstractTypeProcessor implements ErrorHandler, CFContext, OptionConfiguration {

@@ -40,6 +40,7 @@ import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.model.JavacElements;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.TreeCopier;
 import com.sun.tools.javac.tree.TreeInfo;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
@@ -55,6 +56,7 @@ public class TreeBuilder {
     protected final Types modelTypes;
     protected final com.sun.tools.javac.code.Types javacTypes;
     protected final TreeMaker maker;
+    protected final TreeCopier<Void> copier;
     protected final Names names;
     protected final Symtab symtab;
     protected final ProcessingEnvironment env;
@@ -66,8 +68,30 @@ public class TreeBuilder {
         modelTypes = env.getTypeUtils();
         javacTypes = com.sun.tools.javac.code.Types.instance(context);
         maker = TreeMaker.instance(context);
+	copier = new TreeCopier<Void>(maker);
         names = Names.instance(context);
         symtab = Symtab.instance(context);
+    }
+
+    /**
+     * Returns a copy of an existing tree, names and literals are shared with the
+     * original.
+     *
+     * @param tree The tree to copy.
+     * @return A copy of the given tree.
+     */
+    public Tree copy(Tree t) {
+	return copier.copy((JCTree) t);
+    }
+
+    /**
+     * Returns a statement wrapping an expression statement.
+     *
+     * @param exprTree The expression to wrap.
+     * @return A statement consisting of the provided expression.
+     */
+    public StatementTree buildExpressionStatement(ExpressionTree exprTree) {
+	return maker.Exec((JCTree.JCExpression) exprTree);
     }
 
     /**
@@ -412,6 +436,13 @@ public class TreeBuilder {
     }
 
     /**
+     * Builds an AST Tree representing a boolean literal value.
+     */
+    public LiteralTree buildLiteral(boolean value) {
+	return maker.Literal(new Boolean(value));
+    }
+
+    /**
      * Builds an AST Tree to compare two operands with less than.
      *
      * @param left  the left operand tree
@@ -484,7 +515,8 @@ public class TreeBuilder {
     /**
      * Returns the valueOf method of a boxed type such as Short or Float.
      */
-    public static Symbol.MethodSymbol getValueOfMethod(ProcessingEnvironment env, TypeMirror boxedType) {
+    public static Symbol.MethodSymbol getValueOfMethod(ProcessingEnvironment env,
+						       TypeMirror boxedType) {
         Symbol.MethodSymbol valueOfMethod = null;
 
         TypeMirror unboxedType = env.getTypeUtils().unboxedType(boxedType);
@@ -495,7 +527,8 @@ public class TreeBuilder {
 
             if (methodName.contentEquals("valueOf")) {
                 List<? extends VariableElement> params = method.getParameters();
-                if (params.size() == 1 && env.getTypeUtils().isSameType(params.get(0).asType(), unboxedType)) {
+                if (params.size() == 1 &&
+		      env.getTypeUtils().isSameType(params.get(0).asType(), unboxedType)) {
                     valueOfMethod = (Symbol.MethodSymbol)method;
                 }
             }
@@ -782,7 +815,8 @@ public class TreeBuilder {
      * @param right  the right operand tree
      * @return  a Tree representing "left &lt; right"
      */
-    public BinaryTree buildBinary(TypeMirror type, Tree.Kind op, ExpressionTree left, ExpressionTree right) {
+    public BinaryTree buildBinary(TypeMirror type, Tree.Kind op, ExpressionTree left,
+				  ExpressionTree right) {
         JCTree.Tag jcOp = kindToTag(op);
         JCTree.JCBinary binary =
             maker.Binary(jcOp, (JCTree.JCExpression)left,
