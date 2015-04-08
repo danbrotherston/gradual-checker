@@ -1131,7 +1131,7 @@ https://code.google.com/p/checker-framework/issues/detail?id=416
     </target>
 
     <target name="jdk.jar.exists"
-	    description="Check whether an annotated JDK exists.">
+            description="Check whether an annotated JDK exists.">
         <condition property="an.annotated.jdk.exists">
             <or>
                 <available file="jdk/jdk7.jar"/>

@@ -346,18 +346,18 @@ public abstract class GenericAnnotatedTypeFactory<
      */
     protected QualifierDefaults createQualifierDefaults() {
         QualifierDefaults defs = new QualifierDefaults(elements, this);
-	boolean foundDefaultOtherwise = false;
+        boolean foundDefaultOtherwise = false;
 
         // TODO: Verify that only one default per location type is present.
         for (Class<? extends Annotation> qual : getSupportedTypeQualifiers()) {
             DefaultFor defaultFor = qual.getAnnotation(DefaultFor.class);
             if (defaultFor != null) {
                 defs.addAbsoluteDefaults(AnnotationUtils.fromClass(elements,qual),
-                    defaultFor.value());
+                                         defaultFor.value());
 
-		if (Arrays.asList(defaultFor.value()).contains(DefaultLocation.OTHERWISE)) {
-		    foundDefaultOtherwise = true;
-		}
+                if (Arrays.asList(defaultFor.value()).contains(DefaultLocation.OTHERWISE)) {
+                    foundDefaultOtherwise = true;
+                }
             }
 
             if (qual.getAnnotation(DefaultQualifierInHierarchy.class) != null) {
@@ -365,56 +365,56 @@ public abstract class GenericAnnotatedTypeFactory<
                     // A type qualifier should either have a DefaultFor or
                     // a DefaultQualifierInHierarchy annotation
                     ErrorReporter.errorAbort("GenericAnnotatedTypeFactory.createQualifierDefaults: " +
-                            "qualifier has both @DefaultFor and @DefaultQualifierInHierarchy annotations: " +
-                            qual.getCanonicalName());
+                                             "qualifier has both @DefaultFor and @DefaultQualifierInHierarchy annotations: " +
+                                             qual.getCanonicalName());
                 } else {
                     defs.addAbsoluteDefault(AnnotationUtils.fromClass(elements, qual),
-                        DefaultLocation.OTHERWISE);
-		    foundDefaultOtherwise = true;
+                                            DefaultLocation.OTHERWISE);
+                    foundDefaultOtherwise = true;
                 }
             }
-	}
+        }
 
-	addUntypedDefaultsToQualifierDefaults(defs);
+        addUntypedDefaultsToQualifierDefaults(defs);
 
         // If Unqualified is a supported qualifier, make it the default.
         // This is for convenience only. Maybe remove.
         AnnotationMirror unqualified = AnnotationUtils.fromClass(elements, Unqualified.class);
         if (!foundDefaultOtherwise &&
-                this.isSupportedQualifier(unqualified)) {
+            this.isSupportedQualifier(unqualified)) {
             defs.addAbsoluteDefault(unqualified,
-                    DefaultLocation.OTHERWISE);
+                                    DefaultLocation.OTHERWISE);
         }
 
         return defs;
     }
 
     protected void addUntypedDefaultsToQualifierDefaults(QualifierDefaults defs) {
-	for (Class<? extends Annotation> qual : getSupportedTypeQualifiers()) {
-	    // Add defaults for untyped code if conservative untyped flag is passed.
-	    if (checker.hasOption("conservativeUntyped")) {
-		DefaultForInUntyped defaultForUntyped = qual.getAnnotation(DefaultForInUntyped.class);
+        for (Class<? extends Annotation> qual : getSupportedTypeQualifiers()) {
+            // Add defaults for untyped code if conservative untyped flag is passed.
+            if (!checker.hasOption("unsafeUntyped")) {
+                DefaultForInUntyped defaultForUntyped = qual.getAnnotation(DefaultForInUntyped.class);
 
-		if (defaultForUntyped != null) {
-		    defs.addUntypedDefaults(AnnotationUtils.fromClass(elements, qual),
-			defaultForUntyped.value());
-		}
+                if (defaultForUntyped != null) {
+                    defs.addUntypedDefaults(AnnotationUtils.fromClass(elements, qual),
+                                            defaultForUntyped.value());
+                }
 
-		if (qual.getAnnotation(DefaultQualifierInUntyped.class) != null) {
-		    if (defaultForUntyped != null) {
-			// A type qualifier should either have a DefaultForInUntyped or
-			// a DefaultQualifierInUntyped annotation.
-			ErrorReporter.errorAbort("GenericAnnotatedTypeFactory.createQualifierDefaults: " +
-			    "qualifier has both @DefaultForInUntyped and @DefaultQualifierInUntyped annotations: " +
-   			    qual.getCanonicalName());
-		    } else {
-			for (DefaultLocation location : QualifierDefaults.validLocationsForUntyped()) {
-  			    defs.addUntypedDefault(AnnotationUtils.fromClass(elements, qual),
-			        location);
-			}
-		    }
-	      	}
-	    }
+                if (qual.getAnnotation(DefaultQualifierInUntyped.class) != null) {
+                    if (defaultForUntyped != null) {
+                        // A type qualifier should either have a DefaultForInUntyped or
+                        // a DefaultQualifierInUntyped annotation.
+                        ErrorReporter.errorAbort("GenericAnnotatedTypeFactory.createQualifierDefaults: " +
+                                                 "qualifier has both @DefaultForInUntyped and @DefaultQualifierInUntyped annotations: " +
+                                                 qual.getCanonicalName());
+                    } else {
+                        for (DefaultLocation location : QualifierDefaults.validLocationsForUntyped()) {
+                            defs.addUntypedDefault(AnnotationUtils.fromClass(elements, qual),
+                                                   location);
+                        }
+                    }
+                }
+            }
         }
     }
 
