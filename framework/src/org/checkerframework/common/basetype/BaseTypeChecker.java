@@ -418,7 +418,6 @@ public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeC
     // AbstractTypeProcessor delegation
     @Override
     public void typeProcess(TypeElement element, TreePath tree) {
-
         // If Java has issued errors, don't run any checkers on this compilation unit.
         // If a sub checker issued errors, run the next checker on this compilation unit.
 

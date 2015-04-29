@@ -142,7 +142,11 @@ public class NullnessAnnotatedTypeFactory
 
         // TODO: These heuristics are just here temporarily. They all either
         // need to be replaced, or carefully checked for correctness.
-        generalFactory = new GeneralAnnotatedTypeFactory(checker);
+        generalFactory = new GeneralAnnotatedTypeFactory(checker){
+		protected Set<Class<? extends Annotation>> createSupportedTypeQualifiers() {
+		    return NullnessAnnotatedTypeFactory.this.createSupportedTypeQualifiers();
+		}
+	    };
         // Alias the same generalFactory below and ensure that setRoot updates it.
         dependentTypes = new DependentTypes(checker, generalFactory);
 

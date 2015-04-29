@@ -24,6 +24,7 @@ import org.checkerframework.javacutil.TypesUtils;
 import com.sun.source.tree.ArrayAccessTree;
 import com.sun.source.tree.AssignmentTree;
 import com.sun.source.tree.BinaryTree;
+import com.sun.source.tree.BlockTree;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.IdentifierTree;
 import com.sun.source.tree.IfTree;
@@ -626,6 +627,18 @@ public class TreeBuilder {
     }
 
     /**
+     * Builds an AST Tree to represent a Block of statements.
+     *
+     * @param stmt1 The first statement in the block.
+     * @return a StmtBlock consisting of the provided statements.
+     */
+    public BlockTree buildStmtBlock(StatementTree stmt1, StatementTree stmt2) {
+	return maker.Block(0L,
+			   com.sun.tools.javac.util.List.of((JCTree.JCStatement) stmt1,
+							    (JCTree.JCStatement) stmt2));
+    }
+
+    /**
      * Builds an AST Tree to represent an If-else statement.
      *
      * @param cond An expression representing the If condition. 
@@ -824,5 +837,4 @@ public class TreeBuilder {
         binary.setType((Type)type);
         return binary;
     }
-
 }

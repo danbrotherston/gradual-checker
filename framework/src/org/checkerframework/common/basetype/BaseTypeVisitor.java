@@ -1832,19 +1832,21 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
                     varType.getKind(), varTypeString);
         }
 
-        boolean success = atypeFactory.getTypeHierarchy().isSubtype(valueType, varType);
+        boolean success = false;
+
+        // TODO: integrate with subtype test.
+        AnnotationMirror dyn = AnnotationUtils.fromClass(elements, Dynamic.class);
+        if (AnnotatedTypes.containsModifier(valueType, dyn)) {
+            success = dynamicCheck(valueType, varType, valueTree);
+        } else if (AnnotatedTypes.containsModifier(varType, dyn)) {
+            // Do insertion code here.
+            success = true;
+        } else {
+            success = atypeFactory.getTypeHierarchy().isSubtype(valueType, varType);
+        }
 
         // TODO: integrate with subtype test.
         if (success) {
-	    AnnotationMirror dyn = AnnotationUtils.fromClass(elements, Dynamic.class);
-	    if (AnnotatedTypes.containsModifier(valueType, dyn) ||
-		AnnotatedTypes.containsModifier(varType, dyn)) {
-		success = dynamicCheck(valueType, varType, valueTree);
-	    }
-	}
-
-	// TODO: integrate with subtype test.
-	if (success) {
             for (Class<? extends Annotation> mono : atypeFactory.getSupportedMonotonicTypeQualifiers()) {
                 if (valueType.hasAnnotation(mono)
                         && varType.hasAnnotation(mono)) {
@@ -1903,9 +1905,9 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
      * @return Whether the types are valid under the gradual typing consistency relation.
      */
     protected boolean dynamicCheck(AnnotatedTypeMirror valueType,
-				   AnnotatedTypeMirror varType,
-				   Tree valueTree) {
-	return false;
+                                   AnnotatedTypeMirror varType,
+                                   Tree valueTree) {
+        return false;
     }
 
     protected void checkArrayInitialization(AnnotatedTypeMirror type,

@@ -94,8 +94,7 @@ public class ReplacingTreeTranslator extends HelpfulTreeTranslator<GradualNullne
 	}
     }
     
-    @Override
-    public void visitTree(JCTree that) {
+    public void visitTree2(JCTree that) {
 	if (replacementMap.containsKey(that)) {
 	    result = replacementMap.get(that);
 	    if (that instanceof JCTree.JCExpression &&
@@ -113,300 +112,300 @@ public class ReplacingTreeTranslator extends HelpfulTreeTranslator<GradualNullne
     @Override
     public void visitTopLevel(JCCompilationUnit that) {
 	super.visitTopLevel(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitImport(JCImport that) {
 	super.visitImport(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitClassDef(JCClassDecl that) {
 	super.visitClassDef(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitMethodDef(JCMethodDecl that) {
 	super.visitMethodDef(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitVarDef(JCVariableDecl that) {
 	super.visitVarDef(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitSkip(JCSkip that) {
 	super.visitSkip(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitBlock(JCBlock that) {
 	super.visitBlock(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitDoLoop(JCDoWhileLoop that) {
 	super.visitDoLoop(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitWhileLoop(JCWhileLoop that) {
 	super.visitWhileLoop(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitForLoop(JCForLoop that) {
 	super.visitForLoop(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitForeachLoop(JCEnhancedForLoop that) {
 	super.visitForeachLoop(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitLabelled(JCLabeledStatement that) {
 	super.visitLabelled(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitSwitch(JCSwitch that) {
 	super.visitSwitch(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitCase(JCCase that) {
 	super.visitCase(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitSynchronized(JCSynchronized that) {
 	super.visitSynchronized(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitTry(JCTry that) {
 	super.visitTry(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitCatch(JCCatch that) {
 	super.visitCatch(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitConditional(JCConditional that) {
 	super.visitConditional(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitIf(JCIf that) {
 	super.visitIf(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitExec(JCExpressionStatement that) {
 	super.visitExec(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitBreak(JCBreak that) {
 	super.visitBreak(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitContinue(JCContinue that) {
 	super.visitContinue(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitReturn(JCReturn that) {
 	super.visitReturn(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitThrow(JCThrow that) {
 	super.visitThrow(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitAssert(JCAssert that) {
 	super.visitAssert(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitApply(JCMethodInvocation that) {
 	super.visitApply(that);
-	visitTree(that); 
+	visitTree2(that); 
     }
 
     @Override
     public void visitNewClass(JCNewClass that) {
 	super.visitNewClass(that);
-	visitTree(that); 
+	visitTree2(that); 
     }
 
     @Override
     public void visitNewArray(JCNewArray that) {
 	super.visitNewArray(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitParens(JCParens that) {
 	super.visitParens(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitAssign(JCAssign that) {
 	super.visitAssign(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitAssignop(JCAssignOp that) {
 	super.visitAssignop(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitUnary(JCUnary that) {
 	super.visitUnary(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitBinary(JCBinary that) {
 	super.visitBinary(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitTypeCast(JCTypeCast that) {
 	super.visitTypeCast(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitTypeTest(JCInstanceOf that) {
 	super.visitTypeTest(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitIndexed(JCArrayAccess that) {
 	super.visitIndexed(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitSelect(JCFieldAccess that) {
 	super.visitSelect(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitIdent(JCIdent that) {
 	super.visitIdent(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitLiteral(JCLiteral that) {
 	super.visitLiteral(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitTypeIdent(JCPrimitiveTypeTree that) {
 	super.visitTypeIdent(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitTypeArray(JCArrayTypeTree that) {
 	super.visitTypeArray(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitTypeApply(JCTypeApply that) {
 	super.visitTypeApply(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitTypeUnion(JCTypeUnion that) {
 	super.visitTypeUnion(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitTypeParameter(JCTypeParameter that) {
 	super.visitTypeParameter(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitWildcard(JCWildcard that) {
 	super.visitWildcard(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitTypeBoundKind(TypeBoundKind that) {
 	super.visitTypeBoundKind(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitAnnotation(JCAnnotation that) {
 	super.visitAnnotation(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitModifiers(JCModifiers that) {
 	super.visitModifiers(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitErroneous(JCErroneous that) {
 	super.visitErroneous(that);
-	visitTree(that);
+	visitTree2(that);
     }
 
     @Override
     public void visitLetExpr(LetExpr that) {
 	super.visitLetExpr(that);
-	visitTree(that);
+	visitTree2(that);
     }
 }

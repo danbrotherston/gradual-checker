@@ -14,6 +14,7 @@ import java.lang.reflect.Method;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.element.Element;
 import javax.lang.model.util.Types;
 
 /**
@@ -106,38 +107,37 @@ public class RuntimeCheckBuilder {
 	Types types = procEnv.getTypeUtils();
 	TypeMirror booleanType = types.getPrimitiveType(TypeKind.BOOLEAN);
 
-	JCTree classTree1 = (JCTree)
+	Element classTree1 =
 	    builder.getClassSymbolElement(this.runtimeCheckClass, procEnv);
 
-	JCTree classTree2 = (JCTree)
+	Element classTree2 =
 	    builder.getClassSymbolElement(this.runtimeCheckClass, procEnv);
 
 	JCTree checkMethodAccess = (JCTree)
 	    builder.buildMethodAccess(this.runtimeCheckMethod,
-				      (JCExpression) classTree1);
+				      builder.buildClassUse(classTree1));
 
 	JCTree failureMethodAccess = (JCTree)
 	    builder.buildMethodAccess(this.runtimeFailureMethod,
-				      (JCExpression) classTree2);
+				      builder.buildClassUse(classTree2));
 
 	JCTree checkMethodInvocation = (JCTree)
 	    builder.buildMethodInvocation((JCExpression) checkMethodAccess,
 					  value,
-					  (JCExpression) builder.buildLiteral(type));
+					  (JCExpression) builder.buildLiteral(type.toString()));
 
 	JCTree failureMethodInvocation = (JCTree)
 	    builder.buildMethodInvocation((JCExpression) failureMethodAccess,
-					  (JCExpression) builder.copy(value),
-					  (JCExpression) builder.buildLiteral(type));
+					  value,
+					  (JCExpression) builder.buildLiteral(type.toString()));
 
-	JCExpression condition = (JCExpression)
-	    builder.buildBinary(booleanType, Tree.Kind.EQUAL_TO,
-				builder.buildLiteral(true),
-				(JCExpression) checkMethodInvocation);
+	JCExpression condition = (JCExpression) checkMethodInvocation;
 
 	JCStatement ifPart = statement;
-	JCStatement elsePart = (JCStatement)
-	    builder.buildExpressionStatement((ExpressionTree) failureMethodInvocation);
+	JCStatement elsePart = (JCStatement) builder.buildStmtBlock(
+	    builder.buildExpressionStatement((ExpressionTree) failureMethodInvocation),
+	    statement);
+
 
         return (JCStatement) builder.buildIfStatement(condition, ifPart, elsePart);
     }

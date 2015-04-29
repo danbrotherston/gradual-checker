@@ -36,24 +36,24 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
     public void typeProcess(TypeElement element, TreePath path) {
 	super.typeProcess(element, path);
 
-	if (element == null || path == null) {
+	if (element == null || path == null || this.visitor == null) {
 	    return;
 	}
 
 	Map<TreePath, Map.Entry<Tree, AnnotatedTypeMirror>> runtimeCheckLocations =
-	    ((GradualNullnessVisitor) getVisitor()).getRuntimeCheckLocations();
+	    ((GradualNullnessVisitor) this.getVisitor()).getRuntimeCheckLocations();
 
         JCTree tree = (JCTree) path.getCompilationUnit();
 	try {
 	    Method runtimeCheck =
 		(NullnessRuntimeCheck.class).getDeclaredMethod("runtimeCheck",
 							       Object.class,
-							       AnnotatedTypeMirror.class);
+							       String.class);
 
 	    Method runtimeCheckFailure =
 		(NullnessRuntimeCheck.class).getDeclaredMethod("runtimeFailure",
 							       Object.class,
-							       AnnotatedTypeMirror.class);
+							       String.class);
 
 	    RuntimeCheckBuilder checkBuilder =
 		new RuntimeCheckBuilder(NullnessRuntimeCheck.class, runtimeCheck,

@@ -36,5 +36,4 @@ public class AbstractNullnessFbcChecker extends AbstractNullnessChecker {
     public AbstractNullnessFbcChecker() {
         super(true);
     }
-
 }

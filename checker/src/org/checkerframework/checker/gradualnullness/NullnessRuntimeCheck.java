@@ -1,14 +1,14 @@
 package org.checkerframework.checker.gradualnullness;
 
-import org.checkerframework.framework.type.AnnotatedTypeMirror;
-
 public class NullnessRuntimeCheck {
-    public static boolean runtimeCheck(Object value, AnnotatedTypeMirror type) {
-	System.out.println("Running type check on value: " + value.toString());
+    public static boolean runtimeCheck(Object value, String type) {
+	System.out.println("Running type check on value: " + value);
+	System.out.println("And comparing with type: " + type);
 	return false;
     }
 
-    public static void runtimeFailure(Object value, AnnotatedTypeMirror type) {
-	System.out.println("Typecheck failure on value: " + value.toString());
+    public static void runtimeFailure(Object value, String type) {
+	System.out.println("Typecheck failure on value: " + value);
+	throw new RuntimeException("Type Error");
     }
 }
