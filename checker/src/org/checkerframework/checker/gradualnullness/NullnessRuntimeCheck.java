@@ -4,7 +4,11 @@ public class NullnessRuntimeCheck {
     public static boolean runtimeCheck(Object value, String type) {
 	System.out.println("Running type check on value: " + value);
 	System.out.println("And comparing with type: " + type);
-	return false;
+	if (value == null) {
+	    return type.contains("Nullable");
+	} else {
+	    return true;
+	}
     }
 
     public static void runtimeFailure(Object value, String type) {
