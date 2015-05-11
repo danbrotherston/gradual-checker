@@ -261,6 +261,7 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
 
         return env;
     }
+
     protected Env<AttrContext> getAttrEnv(JCTree leaf) {
         return getAttrEnv(leaf, null, null);
     }
@@ -325,16 +326,26 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
         attribute(expr, repl, repl.type);
     }
     public void attribute(JCTree.JCStatement stat, JCTree.JCStatement repl) {
-        AnonymousClassRemover remover = new AnonymousClassRemover();
-        remover.remove(stat, null);
+        if (repl instanceof JCTree.JCBlock) {
+            JCTree.JCBlock block = (JCTree.JCBlock) repl;
+            List<JCTree.JCStatement> stats = block.stats;
+            while (stats != null && stats.head != null) {
+                attributeInBlock(stats.head, block);
+                stats = stats.tail;
+            }
+        } else {
 
-        if (checker.hasOption("verbose"))
-            System.out.println("attributing: " + stat);
-        attr.attribStat(stat, getAttrEnv(repl));
-        if (checker.hasOption("verbose"))
-            System.out.println("    attribution done.");
+            AnonymousClassRemover remover = new AnonymousClassRemover();
+            remover.remove(stat, null);
 
-        remover.replace(stat);
+            if (checker.hasOption("verbose"))
+                System.out.println("attributing: " + stat);
+            attr.attribStat(stat, getAttrEnv(repl));
+            if (checker.hasOption("verbose"))
+                System.out.println("    attribution done.");
+
+            remover.replace(stat);
+        }
     }
 
     public void attributeInBlock(JCTree.JCStatement stat,
@@ -375,7 +386,7 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
                     break;
                 }
             } else if (def.getKind() == Kind.BLOCK &&
-            		((JCTree.JCBlock)def).isStatic()) {
+                        ((JCTree.JCBlock)def).isStatic()) {
                 hasStaticInitializer = true;
             }
         }
@@ -388,7 +399,7 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
                     JCTree.JCBlock block = (JCTree.JCBlock)def;
 
                     if (!block.isStatic()) {
-                    	continue;
+                        continue;
                     }
 
                     // Create a new static method with the block as its body.

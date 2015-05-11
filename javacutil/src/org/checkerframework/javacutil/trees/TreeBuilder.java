@@ -35,6 +35,7 @@ import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.TypeCastTree;
 import com.sun.source.tree.VariableTree;
+import com.sun.tools.javac.code.Kinds;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.code.Type;
@@ -69,7 +70,7 @@ public class TreeBuilder {
         modelTypes = env.getTypeUtils();
         javacTypes = com.sun.tools.javac.code.Types.instance(context);
         maker = TreeMaker.instance(context);
-	copier = new TreeCopier<Void>(maker);
+        copier = new TreeCopier<Void>(maker);
         names = Names.instance(context);
         symtab = Symtab.instance(context);
     }
@@ -82,7 +83,7 @@ public class TreeBuilder {
      * @return A copy of the given tree.
      */
     public Tree copy(Tree t) {
-	return copier.copy((JCTree) t);
+        return copier.copy((JCTree) t);
     }
 
     /**
@@ -92,7 +93,7 @@ public class TreeBuilder {
      * @return A statement consisting of the provided expression.
      */
     public StatementTree buildExpressionStatement(ExpressionTree exprTree) {
-	return maker.Exec((JCTree.JCExpression) exprTree);
+        return maker.Exec((JCTree.JCExpression) exprTree);
     }
 
     /**
@@ -301,11 +302,11 @@ public class TreeBuilder {
      * @return A MethodInvocationTree to call the method with its two arguments.
      */
     public MethodInvocationTree buildMethodInvocation(ExpressionTree methodExpr,
-						      ExpressionTree argExpr1,
-						      ExpressionTree argExpr2) {
-	return maker.App((JCTree.JCExpression) methodExpr,
-	        com.sun.tools.javac.util.List.of((JCTree.JCExpression) argExpr1,
-						 (JCTree.JCExpression) argExpr2));
+                                                      ExpressionTree argExpr1,
+                                                      ExpressionTree argExpr2) {
+        return maker.App((JCTree.JCExpression) methodExpr,
+                com.sun.tools.javac.util.List.of((JCTree.JCExpression) argExpr1,
+                                                 (JCTree.JCExpression) argExpr2));
     }
 
     /**
@@ -318,19 +319,20 @@ public class TreeBuilder {
      * @return a MethodInvocationTree to call the method with its arguments.
      */
     public MethodInvocationTree buildMethodInvocation(ExpressionTree methodExpr,
-						      List<ExpressionTree> argExprList) {
-	com.sun.tools.javac.util.List<JCTree.JCExpression> convertedArgs =
-	    com.sun.tools.javac.util.List.<JCTree.JCExpression>nil();
-	Collections.reverse(argExprList);
-	for (ExpressionTree argExpr : argExprList) {
-	    convertedArgs = convertedArgs.prepend((JCTree.JCExpression) argExpr);
-	}
+                                                      List<ExpressionTree> argExprList) {
+        com.sun.tools.javac.util.List<JCTree.JCExpression> convertedArgs =
+            com.sun.tools.javac.util.List.<JCTree.JCExpression>nil();
+        Collections.reverse(argExprList);
+        for (ExpressionTree argExpr : argExprList) {
+            convertedArgs = convertedArgs.prepend((JCTree.JCExpression) argExpr);
+        }
 
-	return maker.App((JCTree.JCExpression) methodExpr, convertedArgs);
+        return maker.App((JCTree.JCExpression) methodExpr, convertedArgs);
     }
 
     /**
      * Builds an AST Tree to declare and initialize a variable, with no modifiers.
+     * TODO(danbrotherston): Consider refactoring this with the below method.
      *
      * @param type  the type of the variable
      * @param name  the name of the variable
@@ -347,6 +349,7 @@ public class TreeBuilder {
                                   (Type)type, (Symbol)owner);
         VariableTree tree = maker.VarDef(sym, (JCTree.JCExpression)initializer);
         sym.setDeclaration(tree);
+        sym.kind = Kinds.VAR;
         return tree;
     }
 
@@ -440,7 +443,7 @@ public class TreeBuilder {
      * Builds an AST Tree representing a boolean literal value.
      */
     public LiteralTree buildLiteral(boolean value) {
-	return maker.Literal(new Boolean(value));
+        return maker.Literal(new Boolean(value));
     }
 
     /**
@@ -517,7 +520,7 @@ public class TreeBuilder {
      * Returns the valueOf method of a boxed type such as Short or Float.
      */
     public static Symbol.MethodSymbol getValueOfMethod(ProcessingEnvironment env,
-						       TypeMirror boxedType) {
+                                                       TypeMirror boxedType) {
         Symbol.MethodSymbol valueOfMethod = null;
 
         TypeMirror unboxedType = env.getTypeUtils().unboxedType(boxedType);
@@ -529,7 +532,7 @@ public class TreeBuilder {
             if (methodName.contentEquals("valueOf")) {
                 List<? extends VariableElement> params = method.getParameters();
                 if (params.size() == 1 &&
-		      env.getTypeUtils().isSameType(params.get(0).asType(), unboxedType)) {
+                      env.getTypeUtils().isSameType(params.get(0).asType(), unboxedType)) {
                     valueOfMethod = (Symbol.MethodSymbol)method;
                 }
             }
@@ -548,9 +551,9 @@ public class TreeBuilder {
      * @return Element The element representing the symbol of this class.
      */
     public Element getClassSymbolElement(Class<?> clazz, ProcessingEnvironment procEnv) {
-	JavacProcessingEnvironment javacEnv = (JavacProcessingEnvironment) procEnv;
-	JavacElements javacElem = (JavacElements) procEnv.getElementUtils();
-	return javacElem.getTypeElement(clazz.getName());
+        JavacProcessingEnvironment javacEnv = (JavacProcessingEnvironment) procEnv;
+        JavacElements javacElem = (JavacElements) procEnv.getElementUtils();
+        return javacElem.getTypeElement(clazz.getName());
     }
 
     /**
@@ -562,26 +565,26 @@ public class TreeBuilder {
      *         given tree, or null if the method does not exist.
      */
     public MemberSelectTree buildMethodAccess(Method method, ExpressionTree tree) {
-	TypeMirror treeType = InternalUtils.typeOf(tree);
-	TypeElement treeElement = (TypeElement)((DeclaredType)treeType).asElement();
+        TypeMirror treeType = InternalUtils.typeOf(tree);
+        TypeElement treeElement = (TypeElement)((DeclaredType)treeType).asElement();
 
-	String methodName = method.getName();
-	for (ExecutableElement treeMethod :
-		 ElementFilter.methodsIn(elements.getAllMembers(treeElement))) {
-	    Name treeMethodName = treeMethod.getSimpleName();
-	    if (treeMethodName.contentEquals(methodName)) {
-		Symbol.MethodSymbol treeMethodSymbol = (Symbol.MethodSymbol) treeMethod;
-		Type.MethodType treeMethodType = (Type.MethodType) treeMethodSymbol.asType();
+        String methodName = method.getName();
+        for (ExecutableElement treeMethod :
+                 ElementFilter.methodsIn(elements.getAllMembers(treeElement))) {
+            Name treeMethodName = treeMethod.getSimpleName();
+            if (treeMethodName.contentEquals(methodName)) {
+                Symbol.MethodSymbol treeMethodSymbol = (Symbol.MethodSymbol) treeMethod;
+                Type.MethodType treeMethodType = (Type.MethodType) treeMethodSymbol.asType();
 
-		JCTree.JCFieldAccess treeMethodAccess =
-		    (JCTree.JCFieldAccess) maker.Select((JCTree.JCExpression) tree,
-							treeMethodSymbol);
-		treeMethodAccess.setType(treeMethodType);
-		return treeMethodAccess;
-	    }
-	}
+                JCTree.JCFieldAccess treeMethodAccess =
+                    (JCTree.JCFieldAccess) maker.Select((JCTree.JCExpression) tree,
+                                                        treeMethodSymbol);
+                treeMethodAccess.setType(treeMethodType);
+                return treeMethodAccess;
+            }
+        }
 
-	return null;
+        return null;
     }
 
     /**
@@ -630,12 +633,23 @@ public class TreeBuilder {
      * Builds an AST Tree to represent a Block of statements.
      *
      * @param stmt1 The first statement in the block.
+     * @param stmt2 The second statement in the block.
      * @return a StmtBlock consisting of the provided statements.
      */
     public BlockTree buildStmtBlock(StatementTree stmt1, StatementTree stmt2) {
-	return maker.Block(0L,
-			   com.sun.tools.javac.util.List.of((JCTree.JCStatement) stmt1,
-							    (JCTree.JCStatement) stmt2));
+        return maker.Block(0L,
+                           com.sun.tools.javac.util.List.of((JCTree.JCStatement) stmt1,
+                                                            (JCTree.JCStatement) stmt2));
+    }
+
+    /**
+     * Builds an AST Tree to represent a Block of one statement.
+     *
+     * @param stmt The statement in the block.
+     * @return a StmtBlock consisting of the provided statement.
+     */
+    public BlockTree buildStmtBlock(StatementTree stmt) {
+	return maker.Block(0L, com.sun.tools.javac.util.List.of((JCTree.JCStatement) stmt));
     }
 
     /**
@@ -648,11 +662,11 @@ public class TreeBuilder {
      * @return an If Statement that is composed of the provided building blocks.
      */
     public IfTree buildIfStatement(ExpressionTree cond,
-				   StatementTree ifPart,
-				   StatementTree elsePart) {
-	return maker.If((JCTree.JCExpression) cond,
-			(JCTree.JCStatement) ifPart,
-			(JCTree.JCStatement) elsePart);
+                                   StatementTree ifPart,
+                                   StatementTree elsePart) {
+        return maker.If((JCTree.JCExpression) cond,
+                        (JCTree.JCStatement) ifPart,
+                        (JCTree.JCStatement) elsePart);
     }
 
     /**
@@ -829,7 +843,7 @@ public class TreeBuilder {
      * @return  a Tree representing "left &lt; right"
      */
     public BinaryTree buildBinary(TypeMirror type, Tree.Kind op, ExpressionTree left,
-				  ExpressionTree right) {
+                                  ExpressionTree right) {
         JCTree.Tag jcOp = kindToTag(op);
         JCTree.JCBinary binary =
             maker.Binary(jcOp, (JCTree.JCExpression)left,

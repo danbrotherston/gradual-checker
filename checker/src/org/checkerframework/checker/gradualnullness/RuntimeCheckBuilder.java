@@ -1,15 +1,24 @@
 package org.checkerframework.checker.gradualnullness;
 
+import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.ExpressionTree;
+import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
+import com.sun.source.tree.VariableTree;
+import com.sun.source.util.TreePath;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
 
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.javacutil.trees.TreeBuilder;
+import org.checkerframework.javacutil.TreeUtils;
 
 import java.lang.reflect.Method;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.type.TypeKind;
@@ -49,6 +58,18 @@ public class RuntimeCheckBuilder {
     protected final ProcessingEnvironment procEnv;
 
     /**
+     * String representing the variable name used to store the value being tested
+     * in the runtime test.  Must be in a variable so the value can be used multiple
+     * times without duplicating side effects.
+     */
+    protected final String runtimeValueVarName = "checkerRuntimeValueVar$";
+
+    /**
+     * The checker which is building the checks.
+     */
+    protected final GradualNullnessChecker checker;
+
+    /**
      * Provide the required methods and class to call them on in order to build
      * runtime typechecks.
      *
@@ -60,15 +81,43 @@ public class RuntimeCheckBuilder {
      * method but should be used to report an error.
      * @param env The processing environment to use while building trees.
      */
-    public RuntimeCheckBuilder(Class<?> runtimeCheckClass,
+    public RuntimeCheckBuilder(GradualNullnessChecker c,
+			       Class<?> runtimeCheckClass,
 			       Method runtimeCheckMethod,
 			       Method runtimeFailureMethod,
 			       ProcessingEnvironment env) {
 	this.runtimeCheckClass = runtimeCheckClass;
 	this.runtimeCheckMethod = runtimeCheckMethod;
 	this.runtimeFailureMethod = runtimeFailureMethod;
+	this.checker = c;
 	this.builder = new TreeBuilder(env);
 	this.procEnv = env;
+    }
+
+    /**
+     * Gets the owner of a given Tree node (given its tree path), in order to create
+     * and properly own symbols.
+     *
+     * TODO(danbrotherston):  This is based on code from
+     *     CFGBuilder.java:getAssertionsEnabledVariable and maybe other places.
+     *     Consider refactoring it into TreeUtils since it seems to be common, and
+     *     verify that this is robust.
+     *
+     * @param path The path to the node to get symbol owners for.
+     * @return The owner element to use for building symbols referenced in this
+     *         context.
+     */
+    protected Element getSymbolOwner(TreePath path) {
+	MethodTree enclosingMethod = TreeUtils.enclosingMethod(path);
+	Element owner =  null;
+	if (enclosingMethod != null) {
+	    owner = TreeUtils.elementFromDeclaration(enclosingMethod);
+	} else {
+	    ClassTree enclosingClass = TreeUtils.enclosingClass(path);
+	    owner = TreeUtils.elementFromDeclaration(enclosingClass);
+	}
+
+	return owner;
     }
 
     /**
@@ -102,11 +151,11 @@ public class RuntimeCheckBuilder {
      * continue with the runtime type error, they can allow the program to 
      * continue execution.
      */
-    public JCStatement buildRuntimeCheck(JCExpression value, JCStatement statement,
-					 AnnotatedTypeMirror type) {
-	Types types = procEnv.getTypeUtils();
-	TypeMirror booleanType = types.getPrimitiveType(TypeKind.BOOLEAN);
-
+    public Map.Entry<JCTree, JCTree>  buildRuntimeCheck(JCExpression value,
+							JCStatement statement,
+							TreePath compilationUnit,
+							AnnotatedTypeMirror type,
+							TreePath path) {
 	Element classTree1 =
 	    builder.getClassSymbolElement(this.runtimeCheckClass, procEnv);
 
@@ -121,24 +170,41 @@ public class RuntimeCheckBuilder {
 	    builder.buildMethodAccess(this.runtimeFailureMethod,
 				      builder.buildClassUse(classTree2));
 
+	VariableTree variable = builder.buildVariableDecl(type.getUnderlyingType(),
+							  this.runtimeValueVarName,
+							  this.getSymbolOwner(path), value);
+
 	JCTree checkMethodInvocation = (JCTree)
 	    builder.buildMethodInvocation((JCExpression) checkMethodAccess,
-					  value,
+ 					  (JCExpression) builder.buildVariableUse(variable),
 					  (JCExpression) builder.buildLiteral(type.toString()));
 
 	JCTree failureMethodInvocation = (JCTree)
 	    builder.buildMethodInvocation((JCExpression) failureMethodAccess,
-					  value,
+					  (JCExpression) builder.buildVariableUse(variable),
 					  (JCExpression) builder.buildLiteral(type.toString()));
 
 	JCExpression condition = (JCExpression) checkMethodInvocation;
 
-	JCStatement ifPart = statement;
+	JCExpression variableUse = (JCExpression) builder.buildVariableUse(variable);
+
+	SingleReplacementTreeTranslator replacer =
+	    new SingleReplacementTreeTranslator(this.checker, this.procEnv, compilationUnit,
+						value, variableUse);
+	// System.out.println("Statement Before: " + statement);
+	statement.accept(replacer);
+	// System.out.println("Statement After: " + statement);
+
+	JCStatement ifPart = (JCStatement) builder.buildStmtBlock(statement);
 	JCStatement elsePart = (JCStatement) builder.buildStmtBlock(
 	    builder.buildExpressionStatement((ExpressionTree) failureMethodInvocation),
 	    statement);
 
+        JCStatement checkedStatement = (JCStatement) builder.
+	    buildStmtBlock(variable,
+	    		   builder.buildIfStatement(condition, ifPart, elsePart));
 
-        return (JCStatement) builder.buildIfStatement(condition, ifPart, elsePart);
+	// System.out.println("Final statement: " + checkedStatement);
+	return new SimpleEntry<JCTree, JCTree>(checkedStatement, (JCTree) variable);
     }
 }

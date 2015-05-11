@@ -56,14 +56,22 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 							       String.class);
 
 	    RuntimeCheckBuilder checkBuilder =
-		new RuntimeCheckBuilder(NullnessRuntimeCheck.class, runtimeCheck,
+		new RuntimeCheckBuilder(this, NullnessRuntimeCheck.class, runtimeCheck,
 					runtimeCheckFailure, getProcessingEnvironment());
 	    
-	    ReplacingTreeTranslator replacer =
-		new ReplacingTreeTranslator(this, getProcessingEnvironment(), path,
-					    runtimeCheckLocations, checkBuilder);
+	    RuntimeCheckTreeTranslator replacer =
+		new RuntimeCheckTreeTranslator(this, getProcessingEnvironment(), path,
+					       runtimeCheckLocations, checkBuilder);
 
 	    tree.accept(replacer);
+
+	    Map<JCTree, JCTree> unattributedTrees = replacer.getUnattributedTrees();
+
+	    AttributingTreeTranslator translator =
+		new AttributingTreeTranslator(this, getProcessingEnvironment(), path,
+					      unattributedTrees);
+
+	    tree.accept(translator);
 	} catch (NoSuchMethodException e) {
 	    ErrorReporter.errorAbort("Invalid method configuration for runtime checks.");
 	}
