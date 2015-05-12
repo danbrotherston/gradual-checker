@@ -59,6 +59,19 @@ import com.sun.tools.javac.tree.JCTree.LetExpr;
 
 import javax.annotation.processing.ProcessingEnvironment;
 
+/**
+ * @author danbrotherston
+ *
+ * This tree translator converts the HelpfulTreeTranslator from a node specific translator
+ * to a generic translator.  In the root JC visitor classes, all node types call the
+ * visitTree method, as a base case.  However, in the JC translator classes, all node
+ * specific visitor methods are overriden to do node specific translations.  Thus,
+ * the root visitTree method is never called.
+ *
+ * This class reverses that.  It first calls the super method of every node specific
+ * visitor, resulting in a depth first traversal, then calls visitTree on the given (that)
+ * tree node.  Thus visitTree is now called for every node in descendent translators.
+ */
 public class GeneralTreeTranslator extends HelpfulTreeTranslator<GradualNullnessChecker> {
     public GeneralTreeTranslator(GradualNullnessChecker c,
 				 ProcessingEnvironment env,

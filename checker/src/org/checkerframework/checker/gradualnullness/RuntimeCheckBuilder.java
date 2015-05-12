@@ -156,12 +156,14 @@ public class RuntimeCheckBuilder {
 							TreePath compilationUnit,
 							AnnotatedTypeMirror type,
 							TreePath path) {
+	// First get two class tree symbols to call the actual methods.
 	Element classTree1 =
 	    builder.getClassSymbolElement(this.runtimeCheckClass, procEnv);
 
 	Element classTree2 =
 	    builder.getClassSymbolElement(this.runtimeCheckClass, procEnv);
 
+	// Get the method access tree for each the check and failure methods.
 	JCTree checkMethodAccess = (JCTree)
 	    builder.buildMethodAccess(this.runtimeCheckMethod,
 				      builder.buildClassUse(classTree1));
@@ -170,10 +172,15 @@ public class RuntimeCheckBuilder {
 	    builder.buildMethodAccess(this.runtimeFailureMethod,
 				      builder.buildClassUse(classTree2));
 
+	// Build a variable declaration.  The declaration will be used so that any side
+	// effects of the value expression being tested aren't duplicated.  This variable
+	// is initialized to the value of the value expression, then references to this
+	// variable are used any time the expression value is needed.
 	VariableTree variable = builder.buildVariableDecl(type.getUnderlyingType(),
 							  this.runtimeValueVarName,
 							  this.getSymbolOwner(path), value);
 
+	// Build the method invocation tree given the method access tree and the parameters.
 	JCTree checkMethodInvocation = (JCTree)
 	    builder.buildMethodInvocation((JCExpression) checkMethodAccess,
  					  (JCExpression) builder.buildVariableUse(variable),
@@ -184,10 +191,14 @@ public class RuntimeCheckBuilder {
 					  (JCExpression) builder.buildVariableUse(variable),
 					  (JCExpression) builder.buildLiteral(type.toString()));
 
+	// The if condition is simply the check method invocation.
 	JCExpression condition = (JCExpression) checkMethodInvocation;
 
+	// We need one more variable use instance in order to replace the value expression
+	// within the original statement.
 	JCExpression variableUse = (JCExpression) builder.buildVariableUse(variable);
 
+	// Replace the value within the original statement with an instance of the variable.
 	SingleReplacementTreeTranslator replacer =
 	    new SingleReplacementTreeTranslator(this.checker, this.procEnv, compilationUnit,
 						value, variableUse);
@@ -195,11 +206,17 @@ public class RuntimeCheckBuilder {
 	statement.accept(replacer);
 	// System.out.println("Statement After: " + statement);
 
+	// Build the rest of the if statement.  The if part is the original (but modified)
+	// statement.  The else part is a call to the failure method, sequenced with the
+	// original statement in the event the program should continue past the failure
+	// method.
 	JCStatement ifPart = (JCStatement) builder.buildStmtBlock(statement);
 	JCStatement elsePart = (JCStatement) builder.buildStmtBlock(
 	    builder.buildExpressionStatement((ExpressionTree) failureMethodInvocation),
 	    statement);
 
+	// The whole check is the variable declaration sequenced with the if statement,
+	// enclosed within a block to limit the scope of the variable declaration.
         JCStatement checkedStatement = (JCStatement) builder.
 	    buildStmtBlock(variable,
 	    		   builder.buildIfStatement(condition, ifPart, elsePart));

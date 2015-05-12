@@ -42,6 +42,7 @@ public class GradualNullnessVisitor extends NullnessVisitor {
     protected boolean dynamicCheck(AnnotatedTypeMirror valueType,
 				   AnnotatedTypeMirror varType,
 				   Tree valueTree) {
+	// Record this location to insert a runtime check.
 	runtimeCheckLocations.put(getCurrentPath(),
 				  new SimpleEntry<Tree, AnnotatedTypeMirror>(valueTree, varType));
 

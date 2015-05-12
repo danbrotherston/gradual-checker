@@ -34,17 +34,22 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 
     @Override
     public void typeProcess(TypeElement element, TreePath path) {
+	// First perform normal typechecking.
 	super.typeProcess(element, path);
 
+	// Check for errors.
 	if (element == null || path == null || this.visitor == null) {
 	    return;
 	}
 
+	// Get the locations for runtime checks as determined in the first typecheck
+	// pass.
 	Map<TreePath, Map.Entry<Tree, AnnotatedTypeMirror>> runtimeCheckLocations =
 	    ((GradualNullnessVisitor) this.getVisitor()).getRuntimeCheckLocations();
 
         JCTree tree = (JCTree) path.getCompilationUnit();
 	try {
+	    // Setup runtime check configuration.
 	    Method runtimeCheck =
 		(NullnessRuntimeCheck.class).getDeclaredMethod("runtimeCheck",
 							       Object.class,
@@ -58,13 +63,15 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 	    RuntimeCheckBuilder checkBuilder =
 		new RuntimeCheckBuilder(this, NullnessRuntimeCheck.class, runtimeCheck,
 					runtimeCheckFailure, getProcessingEnvironment());
-	    
+
+	    // Insert runtime checks.
 	    RuntimeCheckTreeTranslator replacer =
 		new RuntimeCheckTreeTranslator(this, getProcessingEnvironment(), path,
 					       runtimeCheckLocations, checkBuilder);
 
 	    tree.accept(replacer);
 
+	    // Now attribute the new trees.
 	    Map<JCTree, JCTree> unattributedTrees = replacer.getUnattributedTrees();
 
 	    AttributingTreeTranslator translator =
