@@ -20,8 +20,6 @@ public class NullnessRuntimeCheck {
      * @return True if the type is compatible with the value, false otherwise.
      */
     public static boolean runtimeCheck(Object value, String type) {
-	System.out.println("Running type check on value: " + value);
-	System.out.println("And comparing with type: " + type);
 	if (value == null) {
 	    return type.contains("Nullable");
 	} else {
