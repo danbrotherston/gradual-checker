@@ -78,6 +78,7 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 		new AttributingTreeTranslator(this, getProcessingEnvironment(), path,
 					      unattributedTrees);
 
+	    // System.out.println(tree);
 	    tree.accept(translator);
 	} catch (NoSuchMethodException e) {
 	    ErrorReporter.errorAbort("Invalid method configuration for runtime checks.");

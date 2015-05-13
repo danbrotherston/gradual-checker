@@ -8,8 +8,10 @@ import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.JCBlock;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
+import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.javacutil.trees.TreeBuilder;
@@ -121,12 +123,90 @@ public class RuntimeCheckBuilder {
     }
 
     /**
+     * This method builds a static check for a given value, when that value
+     * occurs in the context of a variable declaration.  Since a variable
+     * declaration affects scope, we must treat it specially, ensuring that
+     * the variable remains in scope after the check.  This involves directly
+     * editing the blcok the variable declaration is contained within.
+     * 
+     * We add a variable declaration in the actual statement, with no
+     * no initializer, then in the check on the value, if successful, the
+     * variable is set to the correct initializer value with an assignment.
+     *
+     * This function uses the standard check builder, by passing our
+     * constructed assignment statement instead of the variable declaration
+     * to build the check.
+     *
+     * @param value The given runtime value to test for runtime typing (this
+     *              is part of the variable decl initializer).
+     * @param statement The variable declaration statement.
+     * @param containingBlock The parent node to the variable declaraion.
+     * @param compilationUnit The compilation unit this check occurs within.
+     * @param type The compile time type to test the value against at runtime.
+     * @param path The tree path to the variable declaration.
+     * @return This function returns a Map.Entry<JCTree, JCTree> representing
+     *         a tuple.  The first value is the modified JCBlock and the
+     *         second is the new assignment statement to be attributed.
+     *
+     * TODO (danbrotherston): This function is highly coupled to the tree
+     * translator.  There is likely some refactoring here that could reduce
+     * this coupling.
+     */
+    public Map.Entry<JCTree, JCTree>  buildVarDeclRuntimeCheck(JCExpression value,
+							       JCVariableDecl variableDecl,
+							       JCBlock containingBlock,
+							       TreePath compilationUnit,
+							       AnnotatedTypeMirror type,
+							       TreePath path) {
+	// Build a variable declaration.  The declaration will create the original variable
+	// in scope, but leave it uninitialized.
+	JCTree.JCVariableDecl variable = (JCTree.JCVariableDecl)
+	    builder.buildVariableDecl(variableDecl.getType(),
+				      variableDecl.getName().toString(),
+				      this.getSymbolOwner(path), null);
+
+	// Build an assignment from the old initializer, this will be the new statement passed
+	// to the runtimeCheck builder.
+	JCTree.JCStatement assignment = (JCTree.JCStatement)
+	    builder.buildAssignment(variable, variableDecl.getInitializer());
+
+	Map.Entry<JCTree, JCTree> checkAndVar =
+	    this.buildRuntimeCheck(value, assignment, compilationUnit, type, path);
+
+	JCTree.JCStatement check = (JCTree.JCStatement) (checkAndVar.getKey());
+
+	// Iterate through the statements in the block.
+	com.sun.tools.javac.util.List<JCStatement> stats = containingBlock.stats;
+	while (stats != null && stats.head != null) {
+	    // When we get to the variable declaration, replace it with the
+	    // the new empty declaration, followed by the check.
+	    if (stats.head == variableDecl) {
+		stats.head = variable;
+
+		com.sun.tools.javac.util.List<JCStatement> newStat =
+		    com.sun.tools.javac.util.List.of(check);
+
+		// Splice linked lists.
+		newStat.tail = stats.tail;
+		stats.tail = newStat;
+		break;
+	    }
+
+	    stats = stats.tail;
+	}
+
+	return new SimpleEntry<JCTree, JCTree>(containingBlock, variable);
+    }
+
+    /**
      * This method buids a static check for a given value and a given tree.
      *
      * @param value The given runtime value to test for runtime typing.
      * @param statement The statement which the value appears in which must be
      *                  executed in the event of a successful test.
+     * @param compilationUnit The compilation unit this statement occurs within.
      * @param type The type to test the value against at runtime.
+     * @param path The path to the statement.
      *
      * This method works by building a JCTree (AST Tree) comprised of an if
      * statement with a condition which calls the above runtime test and provides
@@ -140,16 +220,24 @@ public class RuntimeCheckBuilder {
      * The user of this function is also responsible for correctly attributing
      * the AST tree so that it can be used in the context in which it is placed.
      *
-     * TODO: There are two issues to overcome right now, first, value should be
-     * assigned into a local variable, and re-used in both the test and the
-     * actual statement to execute.  Right now, this will have the effect of
-     * repeating any sideeffects that occur in the value expression.  This can
-     * probably be achieved using a replacer to replace the given tree.
-     * 
-     * TODO: There should be some way to provide the original statement to the
-     * error case, such that if the designer wishes the program to attempt to
-     * continue with the runtime type error, they can allow the program to 
-     * continue execution.
+     * TODO: The last issue of consideration is how to deal with serializing the
+     * compile time type.  Right now, it is simply stringified and the runtime
+     * test is responsible for serializing and determineing the type.  However,
+     * this works only for simple types.  Types with complex annotations and
+     * possible composition and lists of parameters to the annotations may be
+     * expensive to parse.  Consideration should be given to to a more efficient
+     * method of representing the type as a constant.  Also, this doesn't allow
+     * complext type hierarchys to be represented.  To overcome this, the type
+     * hierarchy in question must be decoupled from the compiler and moved into
+     * portable code that can be loaded at runtime.  Then the type should be
+     * converted into the most specific type in that hierarchy which represents
+     * the value under consideration, then the standard subtype test applied.
+     * This would be required for general type hierarchys.
+     *
+     * @return This function returns a Map.Entry<JCTree, JCTree> effecting a
+     *         tuple of two values.  The first is the new statement, the actual
+     *         runtime check.  The other is the modified original statement that
+     *         needs to be attributed.
      */
     public Map.Entry<JCTree, JCTree>  buildRuntimeCheck(JCExpression value,
 							JCStatement statement,

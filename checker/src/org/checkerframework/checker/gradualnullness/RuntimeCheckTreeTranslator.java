@@ -4,6 +4,10 @@ import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.JCExpression;
+import com.sun.tools.javac.tree.JCTree.JCBlock;
+import com.sun.tools.javac.tree.JCTree.JCStatement;
+import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 
@@ -97,22 +101,49 @@ public class RuntimeCheckTreeTranslator extends ReplacingTreeTranslator {
 		   && statementToReplace != null) {
 		statementToReplace = statementToReplace.getParentPath();
 	    }
+	    System.out.println("replacing: " + statementToReplace.getLeaf());
 
-	    // Now build a runtime check with this information.
-	    Map.Entry<JCTree, JCTree> check =
-		checkBuilder.buildRuntimeCheck((JCTree.JCExpression) location.getValue().getKey(),
-					       (JCTree.JCStatement) statementToReplace.getLeaf(),
-					       statementToReplace,
-					       location.getValue().getValue(),
-					       location.getKey());
+	    // If the statement is a VarDecl we must treat it specially to preserve scope.
+	    if (statementToReplace.getLeaf() instanceof JCTree.JCVariableDecl) {
+		// Build a runtime check.  VarDecls must always be contained within a JCBlock
+		// for valid java programs so we know its parent will be a JCBlock.
+		Map.Entry<JCTree, JCTree> check =
+		    checkBuilder.buildVarDeclRuntimeCheck((JCTree.JCExpression)
+							  location.getValue().getKey(),
+							  (JCTree.JCVariableDecl)
+							  statementToReplace.getLeaf(),
+							  (JCTree.JCBlock)
+							  statementToReplace.getParentPath().getLeaf(),
+							  statementToReplace,
+							  location.getValue().getValue(),
+							  location.getKey());
 
-	    // Put it in the replacement map.
-      	    replacementMap.put((JCTree) (statementToReplace.getLeaf()), check.getKey());
+		// Put it in the replacement map.
+		replacementMap.put((JCTree) (statementToReplace.getParentPath().getLeaf()),
+				   check.getKey());
 
-	    // Also insert the resulting nodes in the list of nodes to annotate.  Insert both the
-	    // check, and the value statement since the value statement is modified.
-	    leftToAttributeStatic.put(check.getValue(), (JCTree) (location.getValue().getKey()));
-	    leftToAttributeStatic.put(check.getKey(), (JCTree) (statementToReplace.getLeaf()));
+		// Also insert the odes in the list of nodes to annotate.  Insert both the check,
+		// and the value statement.
+		leftToAttributeStatic.put(check.getValue(), (JCTree) (location.getValue().getKey()));
+		leftToAttributeStatic.put(check.getKey(),
+					  (JCTree) (statementToReplace.getParentPath().getLeaf()));
+	    } else {
+		// Now build a runtime check with this information.
+		Map.Entry<JCTree, JCTree> check =
+		    checkBuilder.buildRuntimeCheck((JCTree.JCExpression) location.getValue().getKey(),
+						   (JCTree.JCStatement) statementToReplace.getLeaf(),
+						   statementToReplace,
+						   location.getValue().getValue(),
+						   location.getKey());
+
+		// Put it in the replacement map.
+		replacementMap.put((JCTree) (statementToReplace.getLeaf()), check.getKey());
+
+		// Also insert the resulting nodes in the list of nodes to annotate.  Insert both the
+		// check, and the value statement since the value statement is modified.
+		leftToAttributeStatic.put(check.getValue(), (JCTree) (location.getValue().getKey()));
+		leftToAttributeStatic.put(check.getKey(), (JCTree) (statementToReplace.getLeaf()));
+	    }
 	}
 
 	return replacementMap;
