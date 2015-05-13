@@ -528,7 +528,7 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
         }
 
         if (typeQualifiersAnnotation != null) {
-	    return getSupportedTypeQualifiersFromAnnotation(typeQualifiersAnnotation);
+            return getSupportedTypeQualifiersFromAnnotation(typeQualifiersAnnotation);
         }
 
         return Collections.emptySet();
@@ -546,12 +546,12 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
      */
     protected final Set<Class<? extends Annotation>> getSupportedTypeQualifiersFromAnnotation(
            TypeQualifiers typeQualifiersAnnotation) {
-	Set<Class<? extends Annotation>> typeQualifiers = new HashSet<Class<? extends Annotation>>();
-	for (Class<? extends Annotation> qualifier : typeQualifiersAnnotation.value()) {
-	    typeQualifiers.add(qualifier);
-	}
-	
-	return Collections.unmodifiableSet(typeQualifiers);
+        Set<Class<? extends Annotation>> typeQualifiers = new HashSet<Class<? extends Annotation>>();
+        for (Class<? extends Annotation> qualifier : typeQualifiersAnnotation.value()) {
+            typeQualifiers.add(qualifier);
+        }
+        
+        return Collections.unmodifiableSet(typeQualifiers);
     }
 
     /**
@@ -714,7 +714,7 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
             postProcessClassTree((ClassTree) tree);
         }
 
-        // System.out.println("AnnotatedTypeFactory::getAnnotatedType(Tree) result: " + type);
+        // System.err.println("AnnotatedTypeFactory::getAnnotatedType(" + tree + ") result: " + type);
         return type;
     }
 

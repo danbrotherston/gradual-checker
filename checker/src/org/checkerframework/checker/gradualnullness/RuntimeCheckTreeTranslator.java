@@ -101,7 +101,8 @@ public class RuntimeCheckTreeTranslator extends ReplacingTreeTranslator {
 		   && statementToReplace != null) {
 		statementToReplace = statementToReplace.getParentPath();
 	    }
-	    System.out.println("replacing: " + statementToReplace.getLeaf());
+
+	    // System.out.println("replacing: " + statementToReplace.getLeaf());
 
 	    // If the statement is a VarDecl we must treat it specially to preserve scope.
 	    if (statementToReplace.getLeaf() instanceof JCTree.JCVariableDecl) {
