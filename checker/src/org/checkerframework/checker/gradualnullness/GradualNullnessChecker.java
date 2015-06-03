@@ -69,6 +69,8 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 		new RuntimeCheckTreeTranslator(this, getProcessingEnvironment(), path,
 					       runtimeCheckLocations, checkBuilder);
 
+	    // System.out.println("Original Tree");
+	    // System.out.println(tree);
 	    tree.accept(replacer);
 
 	    // Now attribute the new trees.
@@ -78,8 +80,24 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 		new AttributingTreeTranslator(this, getProcessingEnvironment(), path,
 					      unattributedTrees);
 
+	    // System.out.println("Modified Tree");
 	    // System.out.println(tree);
 	    tree.accept(translator);
+
+	    MethodRefactoringTreeTranslator methodTranslator =
+		new MethodRefactoringTreeTranslator(this, getProcessingEnvironment(), path);
+
+	    tree.accept(methodTranslator);
+	    // System.out.println("Tree with new methods");
+	    // System.out.println(tree);
+
+	    MethodRenamingTreeTranslator methodRenamer =
+		new MethodRenamingTreeTranslator(this, getProcessingEnvironment(), path);
+
+	    tree.accept(methodRenamer);
+	    // System.out.println("Final Tree:");
+	    // System.out.println(tree);
+
 	} catch (NoSuchMethodException e) {
 	    ErrorReporter.errorAbort("Invalid method configuration for runtime checks.");
 	}
