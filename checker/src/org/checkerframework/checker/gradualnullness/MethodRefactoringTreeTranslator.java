@@ -99,7 +99,12 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
      */
     @Override
     public void visitMethodDef(JCTree.JCMethodDecl tree) {
-	result = runtimeCheckMethod(tree);
+	// Only transform methods which take parameters.
+	if (tree.params != null && tree.params.head != null) {
+  	  result = runtimeCheckMethod(tree);
+	} else {
+	    super.visitMethodDef(tree);
+	}
     }
 
     /**
@@ -140,9 +145,10 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	// Handle constructors later.
 	//System.err.println("Method name: " + tree.getName());
 	//System.err.println("Method: " + tree);
-	if (tree.getName().toString().equals("<init>")) {
-	    return tree;
-	}
+	//if (tree.getName().toString().equals("<init>")) {
+	//  System.err.println("Params: " + tree.params);
+	//  return tree;
+	//}
 
 	Name originalName = tree.getName();
 	Name newName = names.fromString(originalName + this.methodNamePostfix);
