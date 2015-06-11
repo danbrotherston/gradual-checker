@@ -1,9 +1,9 @@
 Compiled from "MethodConversionTest.java"
 public class MethodConversionTest {
+  public static void main_$safe(java.lang.String[]);
+  java.lang.Integer f_$safe(java.lang.Integer);
   public MethodConversionTest();
   public static void main(java.lang.String[]);
   void a();
   java.lang.Integer f(java.lang.Integer);
-  public static void main_$safe(java.lang.String[]);
-  java.lang.Integer f_$safe(java.lang.Integer);
 }

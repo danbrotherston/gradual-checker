@@ -129,7 +129,7 @@ public abstract class AbstractTypeProcessor extends AbstractProcessor {
      * It registers the names of elements to process.
      */
     @Override
-    public final boolean process(Set<? extends TypeElement> annotations,
+    public boolean process(Set<? extends TypeElement> annotations,
             RoundEnvironment roundEnv) {
         for (TypeElement elem : ElementFilter.typesIn(roundEnv.getRootElements())) {
             elements.add(elem.getQualifiedName());

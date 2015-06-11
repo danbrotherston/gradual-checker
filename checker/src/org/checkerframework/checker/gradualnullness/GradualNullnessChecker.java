@@ -2,7 +2,9 @@ package org.checkerframework.checker.gradualnullness;
 
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
+import com.sun.source.util.Trees;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
 
 import org.checkerframework.checker.nullness.AbstractNullnessFbcChecker;
 import org.checkerframework.common.basetype.BaseTypeVisitor;
@@ -12,11 +14,16 @@ import org.checkerframework.framework.qual.StubFiles;
 import org.checkerframework.framework.qual.TypeQualifiers;
 import org.checkerframework.javacutil.ErrorReporter;
 
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * A checker extending the Nullness checker which provides the dynamic
@@ -33,9 +40,44 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
     }
 
     @Override
+    public void init(ProcessingEnvironment env) {
+	super.init(env);
+	this.trees = Trees.instance(env);
+    }
+
+    private JCTree toCompilationUnit(Element elem) {
+	return (JCCompilationUnit) (toTreePath(elem).getCompilationUnit());
+    }
+
+    private TreePath toTreePath(Element elem) {
+	return trees == null ? null : trees.getPath(elem);
+    }
+
+    @Override
+    public boolean process(Set<? extends TypeElement> annotations,
+			   RoundEnvironment environment) {
+	super.process(annotations, environment);
+
+	for (Element elem : environment.getRootElements()) {
+	    // System.out.println("Processing Element: " + elem);
+	    JCTree tree = toCompilationUnit(elem);
+	    TreePath path = toTreePath(elem);
+
+	    MethodRefactoringTreeTranslator methodTranslator =
+		new MethodRefactoringTreeTranslator(this, getProcessingEnvironment(), path);
+
+	    tree.accept(methodTranslator);
+	}
+
+	return false;
+    }
+
+    @Override
     public void typeProcess(TypeElement element, TreePath path) {
 	// First perform normal typechecking.
+	// System.out.println("Starting processing Element: " + element);
 	super.typeProcess(element, path);
+	// System.out.println("Processing Element: " + element);
 
 	// Check for errors.
 	if (element == null || path == null || this.visitor == null) {
@@ -84,16 +126,11 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 	    // System.out.println(tree);
 	    tree.accept(translator);
 
-	    MethodRefactoringTreeTranslator methodTranslator =
-		new MethodRefactoringTreeTranslator(this, getProcessingEnvironment(), path);
-
-	    tree.accept(methodTranslator);
 	    // System.out.println("Tree with new methods");
 	    // System.out.println(tree);
 
 	    MethodRenamingTreeTranslator methodRenamer =
 		new MethodRenamingTreeTranslator(this, getProcessingEnvironment(), path);
-
 	    tree.accept(methodRenamer);
 	    // System.out.println("Final Tree:");
 	    // System.out.println(tree);

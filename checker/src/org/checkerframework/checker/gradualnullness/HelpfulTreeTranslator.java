@@ -99,6 +99,8 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
 
     // Creates an expression referencing "this" in the current class.
     protected JCTree.JCExpression thisExp() {
+	// System.out.println(TreeUtils.enclosingClass(path));
+	// System.out.println(((JCTree)(TreeUtils.enclosingClass(path))).type);
         return maker.This(((JCTree)(TreeUtils.enclosingClass(path))).type);
     }
 

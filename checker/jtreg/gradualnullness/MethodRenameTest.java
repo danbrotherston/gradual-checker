@@ -3,7 +3,7 @@
  * @summary Verifying that value expression side effects are not duplicated when building a
  * runtime test.
  *
- * @run shell MethodConversionTest.sh
+ * @run shell MethodRenameTest.sh
  */
 
 import org.checkerframework.checker.nullness.qual.Nullable;

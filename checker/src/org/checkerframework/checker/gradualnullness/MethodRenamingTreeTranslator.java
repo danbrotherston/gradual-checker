@@ -1,5 +1,7 @@
 package org.checkerframework.checker.gradualnullness;
 
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.IdentifierTree;
 import com.sun.source.util.TreePath;
@@ -11,6 +13,7 @@ import com.sun.tools.javac.tree.JCTree.JCClassDecl;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
 import com.sun.tools.javac.tree.JCTree.JCFieldAccess;
 import com.sun.tools.javac.tree.JCTree.JCIdent;
+import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.util.List;
@@ -70,6 +73,8 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
      */
     protected final AnnotatedTypeFactory aTypeFactory;
 
+    private Element lastSymbolOwner = null;    
+
     /**
      * Visit method application to change the names of checked applications
      * to point to the safe method without checks.  This is an optimization
@@ -78,6 +83,11 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
     @Override
     public void visitApply(JCTree.JCMethodInvocation tree) {
 	result = renameMethodApplication(tree);
+    }
+
+    public void visitMethodDef(JCTree.JCMethodDecl tree) {
+	lastSymbolOwner = tree.sym;
+	super.visitMethodDef(tree);
     }
 
     /**
@@ -112,6 +122,7 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	    AnnotatedTypeMirror receiverType = aTypeFactory.getAnnotatedType(
 	        TreeUtils.enclosingClass(aTypeFactory.getPath(tree)));
 	    TypeMirror underlyingReceiverType = receiverType.getUnderlyingType();
+	    // System.out.println("Method: " + identifier.getName() + " ReceiverType: " + underlyingReceiverType);
 
 	    Name methodIdentifier = identifier.getName();
 	    MethodSymbol methodSymbol = (MethodSymbol) identifier.sym;
@@ -134,6 +145,10 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 						   TypeMirror receiverType,
 						   Name originalName,
 						   MethodSymbol originalSymbol) {
+
+	if (originalName.toString().endsWith(this.methodNamePostfix)) {
+	    return tree;
+	}
 
 	Name newName = names.fromString(originalName + this.methodNamePostfix);
 	AnnotatedExecutableType originalExecutable =
@@ -161,6 +176,21 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 		return newMethodCall;
 	    }
 	}
+	/*
+	if (newName.toString().contains("other")) {
+	    JCTree.JCExpression newMethodSelect =
+		maker.Select(receiver,
+			     new MethodSymbol(originalSymbol.flags_field,
+					      newName,
+					      originalSymbol.type,
+					      (Symbol) this.lastSymbolOwner));
+	    JCTree.JCMethodInvocation newMethodCall =
+		maker.Apply(null, newMethodSelect, tree.getArguments());
+	    // attr.attribExpr(newMethodCall, this.getAttrEnv(tree), originalSymbol.getReturnType());
+	    System.out.println("Synthesizing method call");
+	    return newMethodCall;
+	}
+	*/
 
 	// System.err.println("No method found: ." + newName);
 	// Thread.dumpStack();

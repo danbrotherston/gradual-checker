@@ -47,7 +47,6 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 					   TreePath p) {
 	super(c, env, p);
 	this.builder = new TreeBuilder(env);
-	this.aTypeFactory = c.getTypeFactory();
     }
 
     /**
@@ -71,7 +70,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
     /**
      * The type factory to use for manipulating annotated types.
      */
-    protected final AnnotatedTypeFactory aTypeFactory;
+    //    protected final AnnotatedTypeFactory aTypeFactory;
 
     /**
      * The methods to add to the current class.
@@ -112,6 +111,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
      */
     private JCTree.JCStatement makeMethodCall(JCTree.JCMethodDecl tree) {
 	JCTree.JCExpression selectMethod;
+	// System.out.println("Current class symbol type: " + this.currentClassDef.sym.type);
 
 	if (tree.getModifiers().getFlags().contains(Modifier.STATIC)) {
 	    // Static method call.
@@ -119,7 +119,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 					(Symbol) TreeUtils.elementFromDeclaration(tree));
 	} else {
 	    // "This" method call.
-	    selectMethod = maker.Select(thisExp(),
+	    selectMethod = maker.Select(maker.This(this.currentClassDef.sym.type),
 					(Symbol) TreeUtils.elementFromDeclaration(tree));
 	}
 
@@ -142,13 +142,11 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
      * Actually perform runtime check additions.
      */
     private JCTree runtimeCheckMethod(JCTree.JCMethodDecl tree) {
-	// Handle constructors later.
 	//System.err.println("Method name: " + tree.getName());
 	//System.err.println("Method: " + tree);
-	//if (tree.getName().toString().equals("<init>")) {
-	//  System.err.println("Params: " + tree.params);
-	//  return tree;
-	//}
+	if (tree.getName().toString().equals("<init>")) {
+	    return tree;
+	}
 
 	Name originalName = tree.getName();
 	Name newName = names.fromString(originalName + this.methodNamePostfix);
@@ -165,7 +163,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 
 	enterClassMember(this.currentClassDef, newMethod);
 	this.newMethods.append(newMethod);
-	attr.attribStat(newMethod, enter.getClassEnv(this.currentClassDef.sym));
+	// attr.attribStat(newMethod, enter.getClassEnv(this.currentClassDef.sym));
 
 	JCTree.JCStatement newCode = makeMethodCall(newMethod);
 
@@ -176,7 +174,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	tree.body = maker.Block(0L, List.of(newCode));
 	// System.err.println("Method: " + tree);
 	// System.err.println("Return value: " + tree.getReturnType());
-	attributeInMethod(tree.body, tree, tree.body);
+	// attributeInMethod(tree.body, tree, tree.body);
 
 	return tree;
     }						       
