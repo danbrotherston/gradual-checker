@@ -22,12 +22,15 @@ import com.sun.tools.javac.util.Name;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
+import javax.lang.model.util.Types;
 
 import org.checkerframework.framework.type.AnnotatedTypeFactory;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
@@ -49,11 +52,12 @@ import org.checkerframework.javacutil.TreeUtils;
  */
 public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualNullnessChecker> {
     public MethodRenamingTreeTranslator(GradualNullnessChecker c,
-					   ProcessingEnvironment env,
-					   TreePath p) {
+					ProcessingEnvironment env,
+					TreePath p) {
 	super(c, env, p);
 	this.builder = new TreeBuilder(env);
 	this.aTypeFactory = c.getTypeFactory();
+	this.procEnv = env;
     }
 
     /**
@@ -63,10 +67,21 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
     protected final String methodNamePostfix = "_$safe";
 
     /**
+     * This field stores the string representation of a super call identifier.
+     */
+    protected static final String superCallIdentifier = "super";
+
+    /**
      * This field stores a tree builder used for building trees used in renaming
      * and converting methods.
      */
     protected final TreeBuilder builder;
+
+    /**
+     * This field stores the processing environment this translator was
+     * constructed with.
+     */
+    protected final ProcessingEnvironment procEnv;
 
     /**
      * The type factory to use for manipulating annotated types.
@@ -100,12 +115,29 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	JCTree.JCExpression methodSelect = tree.getMethodSelect();
 	
 	if (methodSelect instanceof JCTree.JCFieldAccess) {
+	    System.out.println("Method select tree: " + methodSelect);
 	    JCTree.JCFieldAccess fieldAccess = (JCTree.JCFieldAccess) methodSelect;
 	    fieldAccess.selected = translate(fieldAccess.selected);
 
 	    AnnotatedTypeMirror receiverType =
 		aTypeFactory.getAnnotatedType(fieldAccess.selected);
 	    TypeMirror underlyingReceiverType = receiverType.getUnderlyingType();
+
+	    if (fieldAccess.selected.toString()
+		.equals(MethodRenamingTreeTranslator.superCallIdentifier)) {
+
+		DeclaredType thisType = (DeclaredType) underlyingReceiverType;
+	        TypeElement thisTypeElement = (TypeElement) thisType.asElement();
+		underlyingReceiverType = thisTypeElement.getSuperclass();
+
+		if (underlyingReceiverType == null) {
+		    throw new RuntimeException("Super method call with no super class");
+		}
+	    }
+
+	    System.out.println("Selected: " + fieldAccess.selected);
+	    System.out.println("Selected Class: " + fieldAccess.selected.getClass());
+	    System.out.println("Underlying Reciever Type: " + underlyingReceiverType);
 
 	    if (underlyingReceiverType instanceof DeclaredType ||
 		underlyingReceiverType instanceof TypeVariable) {
@@ -117,6 +149,7 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 				    methodIdentifier, methodSymbol);
 	    }
 	} else if (methodSelect instanceof IdentifierTree) {
+	    // System.out.println("Method Select Tree: " + methodSelect);
 	    JCTree.JCIdent identifier = (JCTree.JCIdent) methodSelect;
 
 	    AnnotatedTypeMirror receiverType = aTypeFactory.getAnnotatedType(
@@ -154,7 +187,13 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	AnnotatedExecutableType originalExecutable =
 	    aTypeFactory.getAnnotatedType(originalSymbol);
 
-	for (Element elem : typeutils.asElement(receiverType).getEnclosedElements()) {
+	System.out.println("For method name: " + newName);
+	System.out.println("Original Executable: " + originalExecutable);
+	System.out.println("Receiver Type: " + receiverType);
+
+	// for (Element elem : typeutils.asElement(receiverType).getEnclosedElements()) {
+	TypeElement receiverTypeElement = (TypeElement) typeutils.asElement(receiverType);
+	for (Element elem : this.procEnv.getElementUtils().getAllMembers(receiverTypeElement)) {
 	    if (elem.getSimpleName().equals(newName)) {
 		AnnotatedExecutableType newExectuable =
 		    aTypeFactory.getAnnotatedType((ExecutableElement) elem);
