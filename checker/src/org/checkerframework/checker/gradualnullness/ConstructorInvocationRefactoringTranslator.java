@@ -195,6 +195,7 @@ public class ConstructorInvocationRefactoringTranslator
 	    Name methodIdentifier = identifier.getName();
 	    MethodSymbol methodSymbol = (MethodSymbol) identifier.sym;
 
+	    boolean superCall = false;
 	    if (methodIdentifier.toString().equals(ConstructorInvocationRefactoringTranslator.
 						   superCallIdentifier)) {
 		DeclaredType thisType = (DeclaredType) underlyingReceiverType;
@@ -204,6 +205,7 @@ public class ConstructorInvocationRefactoringTranslator
 		if (underlyingReceiverType == null) {
 		    throw new RuntimeException("Super constructor call with no super class");
 		}
+		superCall = true;
 	    }
 
 	    // System.out.println("Method Symbol: " + methodSymbol + " method ident: "
@@ -211,7 +213,7 @@ public class ConstructorInvocationRefactoringTranslator
 
 	    if (methodSymbol.name.toString().equals(this.constructorMethodName)) {
 		tree = renameMethod(tree, thisExp(), underlyingReceiverType,
-				    methodIdentifier, methodSymbol);
+				    methodIdentifier, methodSymbol, superCall);
 	    }
 	}
 
@@ -228,7 +230,8 @@ public class ConstructorInvocationRefactoringTranslator
 						   JCTree.JCExpression receiver,
 						   TypeMirror receiverType,
 						   Name originalName,
-						   MethodSymbol originalSymbol) {
+						   MethodSymbol originalSymbol,
+						   boolean superCall) {
 	AnnotatedExecutableType originalExecutable =
 	    aTypeFactory.getAnnotatedType(originalSymbol);
 
@@ -310,7 +313,12 @@ public class ConstructorInvocationRefactoringTranslator
 		    }
 		}
 
-		JCTree.JCExpression constructor = maker.This(this.currentClassDef.sym.type);
+		JCTree.JCExpression constructor = null;
+		if (superCall) {
+		    constructor = maker.Super((Type) receiverType, this.currentClassDef.sym);
+		} else {
+		    constructor = maker.This(this.currentClassDef.sym.type);
+		}
 
 		// Arguments are the same, just use the original.
 		JCTree.JCMethodInvocation newConstructorCall =
