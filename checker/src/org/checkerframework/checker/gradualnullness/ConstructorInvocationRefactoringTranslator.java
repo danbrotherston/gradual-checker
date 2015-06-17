@@ -128,6 +128,31 @@ public class ConstructorInvocationRefactoringTranslator
 	this.currentClassDef = prevClassDef;
     }
 
+    @Override
+    public void visitNewClass(JCTree.JCNewClass tree) {
+	//result = renameNewClass(tree);
+	result = tree;
+	// System.out.println("Tree: " + tree);
+	// System.out.println("Tree def: " + tree.def);
+	// System.out.println("Tree encl: " + tree.encl);
+	// System.out.println("Tree args: " + tree.args);
+	// System.out.println("Tree clazz: " + tree.clazz);
+
+	List<JCTree.JCExpression> args = tree.args;
+	JCTree.JCExpression newArg =
+	    maker.TypeCast(this.getMarkerClassType(),
+			   maker.Literal(TypeTag.BOT, null));
+	args = args.prepend(newArg);
+
+	result = maker.NewClass(tree.encl,
+				tree.typeargs,
+				tree.clazz,
+				args,
+				tree.def);
+	// System.out.println("Result: " + result);
+	attribute((JCTree.JCNewClass)result, tree);
+    }
+
     /**
      * Returns the marker class type object.
      */
