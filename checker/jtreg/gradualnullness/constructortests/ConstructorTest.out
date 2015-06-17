@@ -1,0 +1,10 @@
+Compiled from "ConstructorTest.java"
+public class ConstructorTest {
+  java.lang.Integer field;
+  ConstructorTest(org.checkerframework.checker.gradualnullness.SafeConstructorMarkerDummy, java.lang.Integer);
+  public static void main_$safe(java.lang.String[]);
+  public static void main(java.lang.String[]);
+  ConstructorTest();
+  ConstructorTest(java.lang.Integer);
+  void a();
+}
