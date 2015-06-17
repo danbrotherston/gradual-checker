@@ -35,7 +35,7 @@ import org.checkerframework.javacutil.TreeUtils;
 /**
  * @author danbrotherston
  *
- * This tree translator converts methods into "save" versions
+ * This tree translator converts methods into "safe" versions
  * which have no checks, and are renamed with a "_safe" postfix.
  *
  * This code is based on the MethodBindingTranslator from enerj,
@@ -83,12 +83,26 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
      */
     @Override
     public void visitClassDef(JCTree.JCClassDecl tree) {
+	// Must store previous class def so we can restore it after this class is finished
+	// processing, in order to accomodate nested classes.  Effectively a stack.
+	JCTree.JCClassDecl prevClassDef = this.currentClassDef;
+	ListBuffer<JCTree> prevNewMethods = this.newMethods;
+
+	// Setup for class processing.
 	this.currentClassDef = tree;
 	this.newMethods = new ListBuffer<JCTree>();
+
+	// Process class.
 	super.visitClassDef(tree);
+
+	// Add new methods to the class.
 	this.newMethods.appendList(tree.defs);
 	tree.defs = this.newMethods.toList();
 	result = tree;
+
+	// Restore state.
+	this.currentClassDef = prevClassDef;
+	this.newMethods = prevNewMethods;
     }
 
     /**

@@ -66,7 +66,13 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 	    MethodRefactoringTreeTranslator methodTranslator =
 		new MethodRefactoringTreeTranslator(this, getProcessingEnvironment(), path);
 
+	    ConstructorRefactoringTranslator constructorTranslator =
+		new ConstructorRefactoringTranslator(this, getProcessingEnvironment(), path);
+
+	    // System.out.println("Tree Before: " + tree);
 	    tree.accept(methodTranslator);
+	    tree.accept(constructorTranslator);
+	    // System.out.println("Tree after: " + tree);
 	}
 
 	return false;

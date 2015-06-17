@@ -115,7 +115,7 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	JCTree.JCExpression methodSelect = tree.getMethodSelect();
 	
 	if (methodSelect instanceof JCTree.JCFieldAccess) {
-	    System.out.println("Method select tree: " + methodSelect);
+	    // System.out.println("Method select tree: " + methodSelect);
 	    JCTree.JCFieldAccess fieldAccess = (JCTree.JCFieldAccess) methodSelect;
 	    fieldAccess.selected = translate(fieldAccess.selected);
 
@@ -135,9 +135,9 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 		}
 	    }
 
-	    System.out.println("Selected: " + fieldAccess.selected);
-	    System.out.println("Selected Class: " + fieldAccess.selected.getClass());
-	    System.out.println("Underlying Reciever Type: " + underlyingReceiverType);
+	    // System.out.println("Selected: " + fieldAccess.selected);
+	    // System.out.println("Selected Class: " + fieldAccess.selected.getClass());
+	    // System.out.println("Underlying Reciever Type: " + underlyingReceiverType);
 
 	    if (underlyingReceiverType instanceof DeclaredType ||
 		underlyingReceiverType instanceof TypeVariable) {
@@ -187,9 +187,9 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	AnnotatedExecutableType originalExecutable =
 	    aTypeFactory.getAnnotatedType(originalSymbol);
 
-	System.out.println("For method name: " + newName);
-	System.out.println("Original Executable: " + originalExecutable);
-	System.out.println("Receiver Type: " + receiverType);
+	// System.out.println("For method name: " + newName);
+	// System.out.println("Original Executable: " + originalExecutable);
+	// System.out.println("Receiver Type: " + receiverType);
 
 	// for (Element elem : typeutils.asElement(receiverType).getEnclosedElements()) {
 	TypeElement receiverTypeElement = (TypeElement) typeutils.asElement(receiverType);
