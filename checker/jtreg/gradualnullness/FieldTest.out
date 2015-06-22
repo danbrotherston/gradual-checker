@@ -1,0 +1,10 @@
+Compiled from "FieldTest.java"
+public class FieldTest {
+  private boolean foo;
+  private final boolean $isTypeCheckedMarker;
+  public static void main_$safe(java.lang.String[]);
+  public FieldTest();
+  public static void main(java.lang.String[]);
+  void a();
+  java.lang.Integer f();
+}

@@ -67,6 +67,11 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
     protected final String methodNamePostfix = "_$safe";
 
     /**
+     * Marker field name.
+     */
+    protected final String markerFieldName = "$isTypeCheckedMarker";
+
+    /**
      * This field stores the string representation of a super call identifier.
      */
     protected static final String superCallIdentifier = "super";

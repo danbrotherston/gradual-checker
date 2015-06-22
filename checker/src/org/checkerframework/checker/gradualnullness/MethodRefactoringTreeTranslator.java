@@ -3,6 +3,7 @@ package org.checkerframework.checker.gradualnullness;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.IdentifierTree;
 import com.sun.source.util.TreePath;
+import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Type;
@@ -47,6 +48,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 					   TreePath p) {
 	super(c, env, p);
 	this.builder = new TreeBuilder(env);
+	this.procEnv = env;
     }
 
     /**
@@ -56,10 +58,20 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
     protected final String methodNamePostfix = "_$safe";
 
     /**
+     * Marker field name.
+     */
+    protected final String markerFieldName = "$isTypeCheckedMarker";
+
+    /**
      * This field stores a tree builder used for building trees used in renaming
      * and converting methods.
      */
     protected final TreeBuilder builder;
+
+    /**
+     * The current processing environment this translator is invoked within.
+     */
+    protected final ProcessingEnvironment procEnv;
 
     /**
      * The current class definition being processed.  We must know this in order
@@ -97,12 +109,43 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 
 	// Add new methods to the class.
 	this.newMethods.appendList(tree.defs);
+	this.newMethods.append(this.createMarkerField());
 	tree.defs = this.newMethods.toList();
+
+	/*
+	List<JCTree> defs = tree.defs;
+	while(defs != null && defs.head != null) {
+	    System.out.println("Def: " + defs.head);
+	    System.out.println("Has Type: " + defs.head.getClass());
+	    defs = defs.tail;
+	    }*/
+
 	result = tree;
 
 	// Restore state.
 	this.currentClassDef = prevClassDef;
 	this.newMethods = prevNewMethods;
+    }
+
+    /**
+     * Generate a new field to insert into every class which has been checked by the
+     * checker framework.  This allows us to check quickly at runtime if a class has
+     * been checked.
+     */
+    protected JCTree createMarkerField() {
+	JCTree.JCVariableDecl newField = (JCTree.JCVariableDecl)
+	    builder.buildVariableDecl(this.procEnv.getTypeUtils().getPrimitiveType(TypeKind.BOOLEAN),
+				      this.markerFieldName,
+				      this.currentClassDef.sym,
+				      builder.buildLiteral(true));
+
+	newField.mods.flags =
+	    (newField.mods.flags | Flags.PRIVATE | Flags.FINAL)
+	    & ~(Flags.PUBLIC | Flags.PROTECTED);
+
+	enterClassMember(this.currentClassDef, newField);
+
+	return newField;
     }
 
     /**
