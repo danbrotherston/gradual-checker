@@ -38,6 +38,7 @@ import org.checkerframework.framework.type.AnnotatedTypeFactory;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedExecutableType;
 import org.checkerframework.javacutil.trees.TreeBuilder;
+import org.checkerframework.javacutil.ElementUtils;
 import org.checkerframework.javacutil.TreeUtils;
 
 import java.util.ListIterator;
@@ -132,11 +133,26 @@ public class ConstructorInvocationRefactoringTranslator
     public void visitNewClass(JCTree.JCNewClass tree) {
 	//result = renameNewClass(tree);
 	result = tree;
-	// System.out.println("Tree: " + tree);
-	// System.out.println("Tree def: " + tree.def);
-	// System.out.println("Tree encl: " + tree.encl);
-	// System.out.println("Tree args: " + tree.args);
-	// System.out.println("Tree clazz: " + tree.clazz);
+	//	System.out.println("Tree: " + tree);
+	//	System.out.println("Tree def: " + tree.def);
+	//	System.out.println("Tree encl: " + tree.encl);
+	//	System.out.println("Tree args: " + tree.args);
+	//	System.out.println("Tree clazz: " + tree.clazz);
+	//	System.out.println("Tree clazz type: " + tree.clazz.getClass());
+	//	System.out.println("Tree clazz ident: " + ((JCTree.JCIdent)tree.clazz).sym);
+	//	System.out.println("Tree symbol: " + tree.constructor);
+	//	System.out.println("Tree Type: " + tree.constructorType);
+	//	System.out.println("Tree Type Symbol: " + tree.constructorType.tsym);
+
+	if (tree.clazz instanceof JCTree.JCIdent) {
+	    Element constructedElement = ((JCTree.JCIdent) tree.clazz).sym;
+	    if ((ElementUtils.isElementFromByteCode(constructedElement) &&
+		 aTypeFactory.declarationFromElement(constructedElement) == null) ||
+		tree.args == null || tree.args.head == null) {
+		result = tree;
+		return;
+	    }
+	}
 
 	List<JCTree.JCExpression> args = tree.args;
 	JCTree.JCExpression newArg =
