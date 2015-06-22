@@ -52,15 +52,28 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
     }
 
     /**
-     * This field stores the postfix to apply to save methods, and all
+     * This field stores the postfix to apply to safe methods, and all
      * checked method calls.
      */
-    protected final String methodNamePostfix = "_$safe";
+    protected final String safeMethodNamePostfix = "_$safe";
 
     /**
      * Marker field name.
      */
     protected final String markerFieldName = "$isTypeCheckedMarker";
+
+    /**
+     * The postfix to use for the runtime method selector to determine whether to
+     * invoke the safe version or the unsafe version of a method.
+     */
+    protected final String maybeMethodNamePostfix = "_$maybe";
+
+    /**
+     * This string references the isChecked method to determine if an object is
+     * based on a class which has been checked by the checker framework.
+     */
+    protected final String runtimeCheckIsCheckedFQMethodName =
+	"org.checkerframework.checker.gradualnullness.RuntimeCheck.isChecked";
 
     /**
      * This field stores a tree builder used for building trees used in renaming
@@ -196,6 +209,64 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
     }
 
     /**
+     * Make a new method and enter it into the type system.
+     *
+     * @param tree The original method to base it off.
+     * @param namePostfix  The method name postfix to use.
+     *
+     * @return The new method declaration tree.
+     */
+    private JCTree.JCMethodDecl makeNewMethod(JCTree.JCMethodDecl tree,
+					      String namePostfix,
+					      JCTree.JCBlock methodBody) {
+	Name originalName = tree.getName();
+	Name newName = names.fromString(originalName + namePostfix);
+
+	JCTree.JCMethodDecl newMethod =
+	    maker.MethodDef(tree.mods,
+			    newName,
+			    tree.restype,
+			    tree.typarams,
+			    tree.params,
+			    tree.thrown,
+			    methodBody,
+			    null);
+
+	// attr.attribStat(newMethod, enter.getClassEnv(this.currentClassDef.sym));
+	enterClassMember(this.currentClassDef, newMethod);
+	this.newMethods.append(newMethod);
+
+	return newMethod;
+    }
+
+    /**
+     * Build the body for the maybe method call.
+     *
+     * @param safeMethod The method declaration for the safe version of the method.
+     * @param normalMethod The method declaration for the normal, unchecked version
+     *                     of the method.
+     *
+     * @return A method body for the maybe method.
+     */
+    private JCTree.JCBlock makeMaybeMethod(JCTree.JCMethodDecl safeMethod,
+					   JCTree.JCMethodDecl normalMethod) {
+	JCTree.JCExpression selectCheckMethod =
+	    dotsExp(this.runtimeCheckIsCheckedFQMethodName);
+
+	JCTree.JCExpression checkInvocation =
+	    maker.Apply(null, selectCheckMethod,
+			List.of(maker.This(this.currentClassDef.sym.type)));
+
+	JCTree.JCStatement ifPart = makeMethodCall(safeMethod);
+	JCTree.JCStatement elsePart = makeMethodCall(normalMethod);
+
+	JCTree.JCStatement checkedStatement = (JCTree.JCStatement)
+	    builder.buildIfStatement(checkInvocation, ifPart, elsePart);
+
+	return (JCTree.JCBlock) builder.buildStmtBlock(checkedStatement);
+    }
+
+     /**
      * Actually perform runtime check additions.
      */
     private JCTree runtimeCheckMethod(JCTree.JCMethodDecl tree) {
@@ -205,29 +276,23 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	    return tree;
 	}
 
-	Name originalName = tree.getName();
-	Name newName = names.fromString(originalName + this.methodNamePostfix);
+	JCTree.JCMethodDecl newSafeMethod =
+	    makeNewMethod(tree, this.safeMethodNamePostfix, tree.body);
 
-	JCTree.JCMethodDecl newMethod =
-	    maker.MethodDef(tree.mods,
-			    newName,
-			    tree.restype,
-			    tree.typarams,
-			    tree.params,
-			    tree.thrown,
-			    tree.body,
-			    null);
-
-	enterClassMember(this.currentClassDef, newMethod);
-	this.newMethods.append(newMethod);
-	// attr.attribStat(newMethod, enter.getClassEnv(this.currentClassDef.sym));
-
-	JCTree.JCStatement newCode = makeMethodCall(newMethod);
+	if (!tree.mods.getFlags().contains(Modifier.STATIC)) {
+	    makeNewMethod(tree,
+			  this.maybeMethodNamePostfix,
+			  makeMaybeMethod(newSafeMethod, tree));
+	}
 
 	// Translate the body after attributing the new method so that the new
-	// name is available.
-	newMethod.body = translate(newMethod.body);
+	// name is available.  There is no need to translate the maybe method
+	// because we constructed it so we know what it contains and there is
+	// nothing our translation would care to modify there.
+	newSafeMethod.body = translate(newSafeMethod.body);
 
+	// Put the original method back with a new safe call.
+	JCTree.JCStatement newCode = makeMethodCall(newSafeMethod);
 	tree.body = maker.Block(0L, List.of(newCode));
 	// System.err.println("Method: " + tree);
 	// System.err.println("Return value: " + tree.getReturnType());

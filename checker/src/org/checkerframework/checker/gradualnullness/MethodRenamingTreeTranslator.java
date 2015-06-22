@@ -64,7 +64,13 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
      * This field stores the postfix to apply to save methods, and all
      * checked method calls.
      */
-    protected final String methodNamePostfix = "_$safe";
+    protected final String safeMethodNamePostfix = "_$safe";
+
+    /**
+     * The postfix to use for the runtime method selector to determine whether to
+     * invoke the safe version or the unsafe version of a method.
+     */
+    protected final String maybeMethodNamePostfix = "_$maybe";
 
     /**
      * Marker field name.
@@ -160,7 +166,8 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	    AnnotatedTypeMirror receiverType = aTypeFactory.getAnnotatedType(
 	        TreeUtils.enclosingClass(aTypeFactory.getPath(tree)));
 	    TypeMirror underlyingReceiverType = receiverType.getUnderlyingType();
-	    // System.out.println("Method: " + identifier.getName() + " ReceiverType: " + underlyingReceiverType);
+	    // System.out.println("Method: " + identifier.getName() + " ReceiverType: "
+	    //                    + underlyingReceiverType);
 
 	    Name methodIdentifier = identifier.getName();
 	    MethodSymbol methodSymbol = (MethodSymbol) identifier.sym;
@@ -184,11 +191,12 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 						   Name originalName,
 						   MethodSymbol originalSymbol) {
 
-	if (originalName.toString().endsWith(this.methodNamePostfix)) {
+	if (originalName.toString().endsWith(this.safeMethodNamePostfix) ||
+	    originalName.toString().endsWith(this.maybeMethodNamePostfix)) {
 	    return tree;
 	}
 
-	Name newName = names.fromString(originalName + this.methodNamePostfix);
+	Name newName = names.fromString(originalName + this.safeMethodNamePostfix);
 	AnnotatedExecutableType originalExecutable =
 	    aTypeFactory.getAnnotatedType(originalSymbol);
 

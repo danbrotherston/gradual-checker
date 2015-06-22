@@ -41,4 +41,27 @@ public class NullnessRuntimeCheck {
 	System.out.println("Typecheck failure on value: " + value);
 	throw new RuntimeException("Type Error");
     }
+
+    /**
+     * This method performs a runtime check on a value and either throws
+     * an error or returns the value.  It is used to check the parameters
+     * to functions because it can be used without creating a temporary variable
+     * but only works in this context because the value won't have to be
+     * evaluated multiple times.  In the eventual AST tree, the compiler will
+     * be responsible for casting the return type to the proper type to ensure
+     * that the correct method is called.
+     *
+     * @param value The actual value of the argument at runtime.
+     * @param type The compile time type which the above value must be compatible
+     *             with.
+     *
+     * @return The provided value, always, unless an error is thrown.
+     */
+    public static Object runtimeCheckArgument(Object value, String type) {
+	if (!runtimeCheck(value, type)) {
+	    runtimeFailure(value, type);
+	}
+
+	return value;
+    }
 }
