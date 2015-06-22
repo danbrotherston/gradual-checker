@@ -5,6 +5,7 @@ import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.IdentifierTree;
 import com.sun.source.util.TreePath;
+import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Type;
@@ -196,9 +197,17 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	    return tree;
 	}
 
-	Name newName = names.fromString(originalName + this.safeMethodNamePostfix);
 	AnnotatedExecutableType originalExecutable =
 	    aTypeFactory.getAnnotatedType(originalSymbol);
+
+	// If the static flag is set on the method, we should immediately go to the
+	// safe version because there is no dynamic dispatch here.
+	Name newName = null;
+	if ((originalSymbol.flags() & Flags.STATIC) != 0) {
+	    newName = names.fromString(originalName + this.safeMethodNamePostfix);
+	} else {
+	    newName = names.fromString(originalName + this.maybeMethodNamePostfix);
+	}
 
 	// System.out.println("For method name: " + newName);
 	// System.out.println("Original Executable: " + originalExecutable);

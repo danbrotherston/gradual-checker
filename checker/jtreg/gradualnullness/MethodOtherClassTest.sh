@@ -14,6 +14,6 @@ $TESTSRC/../../bin/javac -d $TESTCLASSES -processor org.checkerframework.checker
 
 set -e
 
-javap -c $TESTCLASSES/MethodOtherClassTest.class | grep -q "[0-9]*: invokevirtual #[0-9]*[[:space:]]*// Method MethodOtherClassTestOtherClass.fother_\$safe:(Ljava/lang/Integer;)Ljava/lang/Integer;"
+javap -c $TESTCLASSES/MethodOtherClassTest.class | grep -q "[0-9]*: invokevirtual #[0-9]*[[:space:]]*// Method MethodOtherClassTestOtherClass.fother_\$maybe:(Ljava/lang/Integer;)Ljava/lang/Integer;"
 
-javap -c $TESTCLASSES/MethodOtherClassTestOtherClass.class | grep -q "[0-9]*: invokevirtual #[0-9]*[[:space:]]*// Method MethodOtherClassTest.f_\$safe:(Ljava/lang/Integer;)Ljava/lang/Integer;"
+javap -c $TESTCLASSES/MethodOtherClassTestOtherClass.class | grep -q "[0-9]*: invokevirtual #[0-9]*[[:space:]]*// Method MethodOtherClassTest.f_\$maybe:(Ljava/lang/Integer;)Ljava/lang/Integer;"

@@ -14,7 +14,7 @@ $TESTSRC/../../../bin/javac -doe -d $TESTCLASSES -processor org.checkerframework
 
 set -e
 
-javap -c $TESTCLASSES/MethodSuperTest2.class | grep -q "[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method MethodSuperTest2Parent.f_\$safe:(Ljava/lang/Integer;)Ljava/lang/Integer;"
+javap -c $TESTCLASSES/MethodSuperTest2.class | grep -q "[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method MethodSuperTest2Parent.f_\$maybe:(Ljava/lang/Integer;)Ljava/lang/Integer;"
 
 javap -c $TESTCLASSES/MethodSuperTest2.class | grep -q "[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method MethodSuperTest2Parent.a:()V"
 

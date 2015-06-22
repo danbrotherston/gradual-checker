@@ -16,7 +16,7 @@ $TESTSRC/../../../bin/javac -cp $TESTCLASSES -d $TESTCLASSES -processor org.chec
 
 set -e
 
-javap -c $TESTCLASSES/MethodUntypedSuperTest3.class | grep -q "[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method MethodUntypedSuperTest3TypedParent.f_\$safe:(Ljava/lang/Integer;)Ljava/lang/Integer;"
+javap -c $TESTCLASSES/MethodUntypedSuperTest3.class | grep -q "[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method MethodUntypedSuperTest3TypedParent.f_\$maybe:(Ljava/lang/Integer;)Ljava/lang/Integer;"
 
 javap -c $TESTCLASSES/MethodUntypedSuperTest3.class | grep -q "[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method MethodUntypedSuperTest3TypedParent.a:()V"
 
