@@ -76,6 +76,24 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	"org.checkerframework.checker.gradualnullness.RuntimeCheck.isChecked";
 
     /**
+     * String references the runtimeCheckArgument function in the NullnessRunctimeCheck
+     * class.
+     */
+    protected final String argumentCheckFunctionName =
+	"org.checkerframework.checker.gradualnullness.NullnessRuntimeCheck.runtimeCheckArgument";
+
+    /**
+     * This is necessary because the checker framework typechecking has not run at this
+     * point yet, thus the checker framework type is unavailable.  We mark the string
+     * literal with this value so that we can fill the type in at a later time.
+     *
+     * If the end user program author was to use this particular string in their code
+     * they would cause the checker framework to replace their string constant with a type.
+     */
+    protected final String stringLiteralFillInMarker =
+	"$%^CheckerFrameworkFillInTypeHere!@#";
+
+    /**
      * This field stores a tree builder used for building trees used in renaming
      * and converting methods.
      */
@@ -177,6 +195,55 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
     }
 
     /**
+     * Builds a checked argument to a function by calling the argument checking code.
+     */
+    private JCTree.JCExpression makeCheckedArgument(JCTree.JCExpression argument,
+						    Type argumentType) {
+	JCTree.JCExpression checkerFunction = dotsExp(this.argumentCheckFunctionName);
+	JCTree.JCExpression checkedArgument =
+	    maker.Apply(null, checkerFunction,
+			List.of(argument, maker.Literal(this.stringLiteralFillInMarker)));
+	return maker.TypeCast(argumentType, checkedArgument);
+    }
+
+    /**
+     * Builds a checked method call for the given method declaration.
+     *
+     * TODO (danbrotherston): Refactor within the "makeMethodCall" function.
+     * Generalize this code so it can be configured instead of hard coding this
+     * function.
+     */
+    private JCTree.JCStatement makeCheckedMethodCall(JCTree.JCMethodDecl tree) {
+	JCTree.JCExpression selectMethod;
+	// System.out.println("Current class symbol type: " + this.currentClassDef.sym.type);
+
+	if (tree.getModifiers().getFlags().contains(Modifier.STATIC)) {
+	    // Static method call.
+	    selectMethod = maker.Select(dotsExp(this.currentClassDef.sym.toString()),
+					(Symbol) TreeUtils.elementFromDeclaration(tree));
+	} else {
+	    // "This" method call.
+	    selectMethod = maker.Select(maker.This(this.currentClassDef.sym.type),
+					(Symbol) TreeUtils.elementFromDeclaration(tree));
+	}
+
+	ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
+	List<JCTree.JCVariableDecl> params = tree.params;
+	while (params != null && params.head != null) {
+	    args.append(makeCheckedArgument(maker.Ident(params.head), params.head.sym.type));
+	    params = params.tail;
+	}
+
+	// TODO: Proper type test. Do better than this.
+	if (tree.getReturnType() == null || tree.getReturnType().toString().equals("void")) {
+	    return maker.Exec(maker.Apply(null, selectMethod, args.toList()));
+	} else {
+	    return maker.Return(maker.Apply(null, selectMethod, args.toList()));
+	}
+    }
+       
+
+    /**
      * Builds a method call for the given method declaration.
      */
     private JCTree.JCStatement makeMethodCall(JCTree.JCMethodDecl tree) {
@@ -267,8 +334,8 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
     }
 
      /**
-     * Actually perform runtime check additions.
-     */
+      * Actually perform runtime check additions.
+      */
     private JCTree runtimeCheckMethod(JCTree.JCMethodDecl tree) {
 	//System.err.println("Method name: " + tree.getName());
 	//System.err.println("Method: " + tree);
@@ -292,7 +359,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	newSafeMethod.body = translate(newSafeMethod.body);
 
 	// Put the original method back with a new safe call.
-	JCTree.JCStatement newCode = makeMethodCall(newSafeMethod);
+	JCTree.JCStatement newCode = makeCheckedMethodCall(newSafeMethod);
 	tree.body = maker.Block(0L, List.of(newCode));
 	// System.err.println("Method: " + tree);
 	// System.err.println("Return value: " + tree.getReturnType());

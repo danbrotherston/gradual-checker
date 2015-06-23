@@ -1,5 +1,7 @@
 package org.checkerframework.checker.gradualnullness;
 
+import org.checkerframework.checker.nullness.qual.PolyNull;
+
 /**
  * @author danbrotherston
  *
@@ -57,7 +59,7 @@ public class NullnessRuntimeCheck {
      *
      * @return The provided value, always, unless an error is thrown.
      */
-    public static Object runtimeCheckArgument(Object value, String type) {
+    public static @PolyNull Object runtimeCheckArgument(@PolyNull Object value, String type) {
 	if (!runtimeCheck(value, type)) {
 	    runtimeFailure(value, type);
 	}
