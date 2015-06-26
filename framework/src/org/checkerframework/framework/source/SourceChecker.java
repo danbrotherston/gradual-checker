@@ -283,6 +283,8 @@ public abstract class SourceChecker
     /** Used to report error messages and warnings via the compiler. */
     protected Messager messager;
 
+    protected boolean normalExit = false;
+
     /** Used as a helper for the {@link SourceVisitor}. */
     protected Trees trees;
 
@@ -806,6 +808,7 @@ public abstract class SourceChecker
      */
     @Override
     public void typeProcess(TypeElement e, TreePath p) {
+	this.normalExit = false;
         if (e == null) {
             messager.printMessage(javax.tools.Diagnostic.Kind.ERROR,
                     "Refusing to process empty TypeElement");
@@ -848,6 +851,7 @@ public abstract class SourceChecker
         // Visit the attributed tree.
         try {
             visitor.visit(p);
+	    this.normalExit = true;
         } catch (CheckerError ce) {
             logCheckerError(ce);
         } catch (Throwable t) {

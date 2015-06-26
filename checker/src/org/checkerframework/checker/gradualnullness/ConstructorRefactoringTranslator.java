@@ -150,10 +150,12 @@ public class ConstructorRefactoringTranslator
 	    // System.out.println("Transforming method");
 
 	    //	System.out.println("Ctor Body: " + tree.body);
-	    //	if (tree.body.stats != null && tree.body.stats.head != null && tree.getName().toString().equals(this.constructorMethodName)) {
+	    //	if (tree.body.stats != null && tree.body.stats.head != null &&
+	    //      tree.getName().toString().equals(this.constructorMethodName)) {
 	    //	    System.out.println("First statement tree: " + tree.body.stats.head.getClass());
 	    //		System.out.println("Expression statement expr: " +
-	    //			   ((JCTree.JCMethodInvocation)(((JCTree.JCExpressionStatement)(tree.body.stats.head)).getExpression())).meth.getClass());}
+	    //			   ((JCTree.JCMethodInvocation)(((JCTree.JCExpressionStatement
+	    //                     (tree.body.stats.head)).getExpression())).meth.getClass());}
 
 	    result = runtimeCheckConstructor(tree);
 	    //	super.visitMethodDef(tree);

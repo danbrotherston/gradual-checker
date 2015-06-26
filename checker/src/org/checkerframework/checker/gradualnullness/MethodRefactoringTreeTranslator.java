@@ -14,6 +14,7 @@ import com.sun.tools.javac.tree.JCTree.JCFieldAccess;
 import com.sun.tools.javac.tree.JCTree.JCIdent;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
+import com.sun.tools.javac.tree.TreeCopier;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Name;
@@ -23,6 +24,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
@@ -67,6 +69,11 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
      * invoke the safe version or the unsafe version of a method.
      */
     protected final String maybeMethodNamePostfix = "_$maybe";
+
+    /**
+     * The secret name used for constructors to look for when identifying constructors.
+     */
+    protected final String constructorMethodName = "<init>";
 
     /**
      * This string references the isChecked method to determine if an object is
@@ -140,7 +147,15 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 
 	// Add new methods to the class.
 	this.newMethods.appendList(tree.defs);
-	this.newMethods.append(this.createMarkerField());
+
+	// If the marker field is not yet present,
+	// If this is not an interface
+	// Then add a marker field.
+	if (!this.markerFieldPresent(tree.defs) &&
+	    (tree.mods.flags & Flags.INTERFACE) == 0) {
+	    this.newMethods.append(this.createMarkerField());
+	}
+
 	tree.defs = this.newMethods.toList();
 
 	/*
@@ -256,8 +271,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 					(Symbol) TreeUtils.elementFromDeclaration(tree));
 	} else {
 	    // "This" method call.
-	    selectMethod = maker.Select(maker.This(this.currentClassDef.sym.type),
-					(Symbol) TreeUtils.elementFromDeclaration(tree));
+	    selectMethod = maker.Ident(tree.getName());
 	}
 
 	ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
@@ -288,9 +302,10 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 					      JCTree.JCBlock methodBody) {
 	Name originalName = tree.getName();
 	Name newName = names.fromString(originalName + namePostfix);
+	TreeCopier<Void> copier = new TreeCopier<Void>(maker);
 
 	JCTree.JCMethodDecl newMethod =
-	    maker.MethodDef(tree.mods,
+	    maker.MethodDef(copier.copy(tree.mods),
 			    newName,
 			    tree.restype,
 			    tree.typarams,
@@ -298,6 +313,12 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 			    tree.thrown,
 			    methodBody,
 			    null);
+
+	// If this is an interface we must make the methods default
+	/*	if ((this.currentClassDef.mods.flags & Flags.INTERFACE) != 0) {
+	    System.out.println("Making default: " + newName);
+	    newMethod.mods.flags = (newMethod.mods.flags | Flags.DEFAULT);
+	    }*/
 
 	// attr.attribStat(newMethod, enter.getClassEnv(this.currentClassDef.sym));
 	enterClassMember(this.currentClassDef, newMethod);
@@ -333,13 +354,114 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	return (JCTree.JCBlock) builder.buildStmtBlock(checkedStatement);
     }
 
+    /**
+     * Determine if the class already defines the safe (and maybe) methods for the
+     * given method.  Check method name as well as params.
+     *
+     * @param classDef The class to check if the safe method is defined on.
+     * @param methodDef The method to check for safe version of.
+     * @return True iff there is already a safe version of the method.
+     */
+    protected boolean alreadyDefinedSafeMethod(JCTree.JCClassDecl classDef,
+					       JCTree.JCMethodDecl methodDef) {
+	List<JCTree> defs = classDef.defs;
+	while(defs != null && defs.head != null) {
+	    if (this.isDefSafeMethodOf(defs.head, methodDef)) {
+		return true;
+	    }
+	    defs = defs.tail;
+	}
+
+	return false;
+    }
+
+    /**
+     * Determines if a def matches a method, and is the safe version of that method.
+     *
+     * @param def The def to compare with the method.
+     * @param methodDef The method to compare with.
+     * @return True iff the def is the safe version of the methodDef.
+     */
+    protected boolean isDefSafeMethodOf (JCTree def, JCTree.JCMethodDecl methodDef) {
+	// Check def is a method.
+	if (!(def instanceof JCTree.JCMethodDecl)) {
+	    return false;
+	}
+
+	// Check def name matches.
+	JCTree.JCMethodDecl possibleMatch = (JCTree.JCMethodDecl) def;
+	if (!possibleMatch.getName().toString().equals(methodDef.getName().toString()
+						       + this.safeMethodNamePostfix)) {
+	    return false;
+	}
+
+	// Check params match.
+	List<JCTree.JCVariableDecl> params = possibleMatch.params;
+	List<JCTree.JCVariableDecl> params2 = methodDef.params;
+	while (params != null && params.head != null) {
+	    // Wrong number of params.
+	    if (params2 == null || params2.head == null) {
+		return false;
+	    }
+
+	    // Params don't match
+	    if (!this.variableDeclsMatch(params.head, params2.head)) {
+		return false;
+	    }
+	    params = params.tail;
+	    params2 = params2.tail;
+	}
+
+	// All else fails methods match.
+	return true;
+    }
+
+    /**
+     * Check if a list of defs contains the marker field we define.
+     *
+     * @param defs The list of defs to search for the marker field.
+     * @return True iff the defs list contains a marker field.
+     */
+    protected boolean markerFieldPresent (List<JCTree> defs) {
+	while (defs != null && defs.head != null) {
+	    if (defs.head instanceof JCTree.JCVariableDecl) {
+		JCTree.JCVariableDecl varDecl = (JCTree.JCVariableDecl) defs.head;
+		PrimitiveType booleanType =
+		    this.procEnv.getTypeUtils().getPrimitiveType(TypeKind.BOOLEAN);
+		if (varDecl.getName().toString().equals(this.markerFieldName) &&
+		    varDecl.vartype.toString().equals(booleanType.toString())) {
+		    return true;
+		}
+	    }
+
+	    defs = defs.tail;
+	}
+	return false;
+    }
+
+    /**
+     * Check to see if variable decls match in both type and name.
+     *
+     * @param varDecl1
+     * @param varDecl2
+     * @return True iff varDecl1 and varDecl2 have the same name and type.
+     */
+    protected boolean variableDeclsMatch(JCTree.JCVariableDecl varDecl1,
+					 JCTree.JCVariableDecl varDecl2) {
+	return varDecl1.name.toString().equals(varDecl2.name.toString()) &&
+	    varDecl1.vartype.toString().equals(varDecl2.vartype.toString());
+    }
+
      /**
       * Actually perform runtime check additions.
       */
     private JCTree runtimeCheckMethod(JCTree.JCMethodDecl tree) {
 	//System.err.println("Method name: " + tree.getName());
 	//System.err.println("Method: " + tree);
-	if (tree.getName().toString().equals("<init>")) {
+	if (tree.getName().toString().equals(this.constructorMethodName) ||
+	    tree.getName().toString().endsWith(this.safeMethodNamePostfix) ||
+	    tree.getName().toString().endsWith(this.maybeMethodNamePostfix) ||
+	    this.alreadyDefinedSafeMethod(this.currentClassDef, tree)) {
 	    return tree;
 	}
 
@@ -347,9 +469,14 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	    makeNewMethod(tree, this.safeMethodNamePostfix, tree.body);
 
 	if (!tree.mods.getFlags().contains(Modifier.STATIC)) {
-	    makeNewMethod(tree,
-			  this.maybeMethodNamePostfix,
-			  makeMaybeMethod(newSafeMethod, tree));
+	    JCTree.JCMethodDecl maybeMethod =
+		makeNewMethod(tree,
+			      this.maybeMethodNamePostfix,
+			      makeMaybeMethod(newSafeMethod, tree));
+
+	    if ((this.currentClassDef.mods.flags & Flags.INTERFACE) != 0) {
+		maybeMethod.mods.flags = maybeMethod.mods.flags | Flags.DEFAULT;
+	    }
 	}
 
 	// Translate the body after attributing the new method so that the new
@@ -358,9 +485,27 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	// nothing our translation would care to modify there.
 	newSafeMethod.body = translate(newSafeMethod.body);
 
-	// Put the original method back with a new safe call.
-	JCTree.JCStatement newCode = makeCheckedMethodCall(newSafeMethod);
-	tree.body = maker.Block(0L, List.of(newCode));
+	// If this is an interface, and if the original method had no body, which
+	// is likely for an interface, unless it was a default method, then we
+	// should keep it a default method so that classes implementing the interface
+	// aren't required to implement the method, but that the interface type may
+	// still have a safe version.
+	if ((this.currentClassDef.mods.flags & Flags.INTERFACE) != 0
+	    && newSafeMethod.body == null) {
+	    newSafeMethod.mods.flags = newSafeMethod.mods.flags | Flags.DEFAULT;
+	    
+	    newSafeMethod.body = maker.Block(0, List.of((JCTree.JCStatement)maker.Throw(
+		maker.NewClass(null,
+			       List.<JCTree.JCExpression>nil(),
+			       maker.Ident(names.fromString("RuntimeException")),
+			       List.<JCTree.JCExpression>nil(),
+			       null))));
+	} else {
+	    // Put the original method back with a new safe call.
+	    JCTree.JCStatement newCode = makeCheckedMethodCall(newSafeMethod);
+	    tree.body = maker.Block(0L, List.of(newCode));
+	}
+
 	// System.err.println("Method: " + tree);
 	// System.err.println("Return value: " + tree.getReturnType());
 	// attributeInMethod(tree.body, tree, tree.body);

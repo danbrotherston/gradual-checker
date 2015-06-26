@@ -1,0 +1,11 @@
+Compiled from "InterfaceTest.java"
+public class InterfaceTest {
+  private final boolean $isTypeCheckedMarker;
+  public static void main_$safe(java.lang.String[]);
+  void bar_$safe(java.lang.Integer);
+  void bar_$maybe(java.lang.Integer);
+  public InterfaceTest();
+  public static void main(java.lang.String[]);
+  void foo();
+  void bar(java.lang.Integer);
+}

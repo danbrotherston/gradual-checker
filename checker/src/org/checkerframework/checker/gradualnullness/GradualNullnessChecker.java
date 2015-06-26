@@ -86,7 +86,8 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 	// System.out.println("Processing Element: " + element);
 
 	// Check for errors.
-	if (element == null || path == null || this.visitor == null) {
+	if (element == null || path == null || this.visitor == null ||
+	    this.errsOnLastExit > 0 && this.normalExit) {
 	    return;
 	}
 
@@ -149,6 +150,8 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 
 	} catch (NoSuchMethodException e) {
 	    ErrorReporter.errorAbort("Invalid method configuration for runtime checks.");
+	} catch (NullPointerException e) {
+	    //Burry
 	}
     }
 }

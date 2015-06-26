@@ -113,8 +113,15 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
     }
 
     public void visitMethodDef(JCTree.JCMethodDecl tree) {
+	Element prevSymbolOwner = lastSymbolOwner;
 	lastSymbolOwner = tree.sym;
-	super.visitMethodDef(tree);
+	if (tree.getName().toString().endsWith(this.maybeMethodNamePostfix)) {
+	    result = tree;
+	} else {
+	    super.visitMethodDef(tree);
+	}
+
+	lastSymbolOwner = prevSymbolOwner;
     }
 
     /**
@@ -131,16 +138,23 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	    JCTree.JCFieldAccess fieldAccess = (JCTree.JCFieldAccess) methodSelect;
 	    fieldAccess.selected = translate(fieldAccess.selected);
 
-	    AnnotatedTypeMirror receiverType =
-		aTypeFactory.getAnnotatedType(fieldAccess.selected);
-	    TypeMirror underlyingReceiverType = receiverType.getUnderlyingType();
+	    //System.err.println("Tree: " + tree);
+	    //System.err.println("Get type of: " + fieldAccess.selected);
+	    //AnnotatedTypeMirror receiverType =
+	    //aTypeFactory.getAnnotatedType(fieldAccess.selected);
+	    TypeMirror underlyingReceiverType = fieldAccess.selected.type;
 
 	    if (fieldAccess.selected.toString()
 		.equals(MethodRenamingTreeTranslator.superCallIdentifier)) {
 
 		DeclaredType thisType = (DeclaredType) underlyingReceiverType;
 	        TypeElement thisTypeElement = (TypeElement) thisType.asElement();
-		underlyingReceiverType = thisTypeElement.getSuperclass();
+
+		// System.out.println("This Type: " + underlyingReceiverType);
+		// System.out.println("thisTypeElement: " + thisTypeElement);
+		// underlyingReceiverType = thisTypeElement.getSuperclass();
+
+		// System.out.println("SuperClass: " + underlyingReceiverType);
 
 		if (underlyingReceiverType == null) {
 		    throw new RuntimeException("Super method call with no super class");
@@ -164,11 +178,12 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	    // System.out.println("Method Select Tree: " + methodSelect);
 	    JCTree.JCIdent identifier = (JCTree.JCIdent) methodSelect;
 
-	    AnnotatedTypeMirror receiverType = aTypeFactory.getAnnotatedType(
-	        TreeUtils.enclosingClass(aTypeFactory.getPath(tree)));
-	    TypeMirror underlyingReceiverType = receiverType.getUnderlyingType();
-	    // System.out.println("Method: " + identifier.getName() + " ReceiverType: "
-	    //                    + underlyingReceiverType);
+	    //AnnotatedTypeMirror receiverType = aTypeFactory.getAnnotatedType(
+	    JCTree enclosing = (JCTree) TreeUtils.enclosingClass(aTypeFactory.getPath(tree));
+	    TypeMirror underlyingReceiverType = enclosing.type;// receiverType.getUnderlyingType();
+	    // System.err.println("Method: " + identifier.getName() + " ReceiverType: "
+	    //                    + underlyingReceiverType + " Ident: " + identifier
+	    //                    + " symbol: " + identifier.sym);
 
 	    Name methodIdentifier = identifier.getName();
 	    MethodSymbol methodSymbol = (MethodSymbol) identifier.sym;
@@ -197,25 +212,40 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	    return tree;
 	}
 
-	AnnotatedExecutableType originalExecutable =
-	    aTypeFactory.getAnnotatedType(originalSymbol);
+	// AnnotatedExecutableType originalExecutable =
+	//    aTypeFactory.getAnnotatedType(originalSymbol);
 
 	// If the static flag is set on the method, we should immediately go to the
 	// safe version because there is no dynamic dispatch here.
+	// If this is a super call, we should immediately dispatch to the safe version.
+	// If this is a private method we should immediately dispatch to the safe version.
+	// Why?  Because all of these instances are dispatched statically, not virtually
+	// in java (and will result in the invokestatic/invokespecial bytecode instruction.
 	Name newName = null;
-	if ((originalSymbol.flags() & Flags.STATIC) != 0) {
+	if (((originalSymbol.flags() & Flags.STATIC) != 0) ||
+	    ((originalSymbol.flags() & Flags.PRIVATE) != 0) ||
+	    receiver.toString().equals(MethodRenamingTreeTranslator.superCallIdentifier)) {
 	    newName = names.fromString(originalName + this.safeMethodNamePostfix);
 	} else {
 	    newName = names.fromString(originalName + this.maybeMethodNamePostfix);
 	}
 
-	// System.out.println("For method name: " + newName);
-	// System.out.println("Original Executable: " + originalExecutable);
-	// System.out.println("Receiver Type: " + receiverType);
-
-	// for (Element elem : typeutils.asElement(receiverType).getEnclosedElements()) {
 	TypeElement receiverTypeElement = (TypeElement) typeutils.asElement(receiverType);
+
+	// System.out.println("In method: " + this.lastSymbolOwner);
+	// System.out.println("For method name: " + newName);
+	// System.out.println("Tree: " + tree);
+	// System.out.println("Receiver Type: " + receiverType);
+	// System.out.println("All members: " +
+        // 		   this.procEnv.getElementUtils().getAllMembers(receiverTypeElement));
+	// System.out.println("Receiver Type Element: " + receiverTypeElement);
+	// for (Element elem : typeutils.asElement(receiverType).getEnclosedElements()) {
+
+	// TODO: Maybe have to see if we should search sequentially up the inheritance chain
+	// because maybe there is an untyped class in between that implements f but not f_safe
+	// and thus that f should be called first.  Ughhh.
 	for (Element elem : this.procEnv.getElementUtils().getAllMembers(receiverTypeElement)) {
+	    // System.out.println("Searching: " + elem.getSimpleName());
 	    if (elem.getSimpleName().equals(newName)) {
 		AnnotatedExecutableType newExectuable =
 		    aTypeFactory.getAnnotatedType((ExecutableElement) elem);
@@ -231,6 +261,7 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 
 		// System.err.println("Method found: " + elem.getSimpleName());
 		// Attribute the new tree.
+		// System.err.println("Attribbing: " + newMethodCall);
 		attr.attribExpr(newMethodCall, this.getAttrEnv(tree),
 				(Type)((ExecutableElement) elem).getReturnType());
 
