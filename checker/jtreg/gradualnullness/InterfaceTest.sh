@@ -19,3 +19,6 @@ diff $TESTCLASSES/InterfaceTest.testout $TESTSRC/InterfaceTest.out
 
 javap -private $TESTCLASSES/IInterface.class > $TESTCLASSES/IInterface.testout
 diff $TESTCLASSES/IInterface.testout $TESTSRC/IInterface.out
+
+rm $TESTCLASSES/*.class
+rm $TESTCLASSES/*.testout
