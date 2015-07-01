@@ -2661,10 +2661,18 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
                 overriddenParams.remove(0);
             }
             for (int i = 0; i < overriderParams.size(); ++i) {
-                boolean success = atypeFactory.getTypeHierarchy().isSubtype(overriddenParams.get(i), overriderParams.get(i));
-                if(!success) {
-                    success = testTypevarContainment(overriddenParams.get(i), overriderParams.get(i));
-                }
+                boolean success = false;
+		AnnotationMirror dyn = AnnotationUtils.fromClass(elements, Dynamic.class);
+		if (AnnotatedTypes.containsModifier(overriddenParams.get(i), dyn) ||
+		    AnnotatedTypes.containsModifier(overriderParams.get(i), dyn)) {
+		    success = true;
+		} else {
+		    success = atypeFactory.getTypeHierarchy().isSubtype(overriddenParams.get(i), overriderParams.get(i));
+
+		    if(!success) {
+			success = testTypevarContainment(overriddenParams.get(i), overriderParams.get(i));
+		    }
+		}
 
                 checkParametersMsg(success, i, overriderParams, overriddenParams);
                 result &= success;
@@ -2686,7 +2694,8 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
                         overriderMeth, overriderTyp, index, overriderParams.get(index).toString(),
                         overriddenMeth, overriddenTyp, index, overriddenParams.get(index).toString());
             }
-            if (!success) {
+
+	    if (!success) {
                 checker.report(Result.failure(msgKey,
                                 overriderMeth, overriderTyp,
                                 overriddenMeth, overriddenTyp,

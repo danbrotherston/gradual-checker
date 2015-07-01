@@ -147,13 +147,14 @@ public class DefaultTypeHierarchy extends AbstractAtmComboVisitor<Boolean, Visit
      */
     @Override
     public boolean isSubtype(final AnnotatedTypeMirror subtype, final AnnotatedTypeMirror supertype) {
-        for(final AnnotationMirror top : qualifierHierarchy.getTopAnnotations()) {
+	for(final AnnotationMirror top : qualifierHierarchy.getTopAnnotations()) {
             if(!isSubtype(subtype, supertype, top)) {
+		// System.err.println("Subtype test fails on am: " + subtype + " with: " + supertype + " and top:  " + top);
                 return false;
             }
         }
 
-        return true;
+	return true;
     }
 
     /**

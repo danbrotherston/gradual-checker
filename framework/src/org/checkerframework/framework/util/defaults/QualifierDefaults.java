@@ -430,17 +430,22 @@ public class QualifierDefaults {
         for (Default def : defaults) {
             applier.apply(def);
         }
-        
+        //System.out.println("annotationScope: " + annotationScope);
+	//System.out.println("mirror: " + type);
         if (untypedDefaults.size() > 0 &&
-              ElementUtils.isElementFromByteCode(annotationScope)) {
+	    ElementUtils.isElementFromByteCode(annotationScope)) {
+	    //System.out.println("In if statement");
             for (Default def : untypedDefaults) {
+		//System.out.println("Apply default: " + def);
                 applier.apply(def);
             }
         }
+	//System.out.println("Type after: " + type);
   
         for (Default def : absoluteDefaults) {
             applier.apply(def);
         }
+	//System.out.println("Type after after: " + type);
     }
 
     public static class DefaultApplierElement {
