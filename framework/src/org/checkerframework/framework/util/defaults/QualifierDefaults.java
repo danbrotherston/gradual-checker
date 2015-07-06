@@ -28,6 +28,7 @@ import org.checkerframework.javacutil.TreeUtils;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.type.MirroredTypeException;
 import javax.lang.model.type.TypeKind;
@@ -65,6 +66,8 @@ public class QualifierDefaults {
     private final DefaultSet absoluteDefaults = new DefaultSet();
     private final DefaultSet untypedDefaults = new DefaultSet();
 
+    private boolean accessibleFieldsAsUntyped = false;
+
     /** Mapping from an Element to the source Tree of the declaration. */
     private static final int CACHE_SIZE = 300;
     protected static final Map<Element, BoundType> elementToBoundType  = AnnotatedTypeFactory.createLRUCache(CACHE_SIZE);
@@ -96,6 +99,16 @@ public class QualifierDefaults {
      */
     public static DefaultLocation[] validLocationsForUntyped() {
         return validUntypedDefaultLocations;
+    }
+
+    /**
+     * Tells the qualifier defaults system to treat accessible fields as untyped.
+     * This is used when ensuring type safety for typed/untyped boundary to ensure
+     * that accessible fields, which may be written by any untyped code are treated
+     * as though they are untyped.
+     */
+    public void treatAccessibleFieldsAsUntyped() {
+	this.accessibleFieldsAsUntyped = true;
     }
 
     /**
@@ -430,10 +443,25 @@ public class QualifierDefaults {
         for (Default def : defaults) {
             applier.apply(def);
         }
-        //System.out.println("annotationScope: " + annotationScope);
-	//System.out.println("mirror: " + type);
-        if (untypedDefaults.size() > 0 &&
-	    ElementUtils.isElementFromByteCode(annotationScope)) {
+	/*
+	if (annotationScope.toString().equals("publicField") || 
+	    annotationScope.toString().equals("bar")) {
+	    System.out.println("annotationScope: " + annotationScope);
+	    System.out.println("mirror: " + type);
+	    System.out.println("annotationScope class: " + annotationScope.getClass());
+	    System.out.println("mirror class: " + type.getClass());
+	    }*/
+
+	boolean isScopeAccessibleField = annotationScope != null &&
+	    annotationScope.getKind() == ElementKind.FIELD &&
+	    (annotationScope.getModifiers() != null) &&
+	    !annotationScope.getModifiers().contains(Modifier.FINAL) &&
+	    !annotationScope.getModifiers().contains(Modifier.PRIVATE);
+
+        if ((untypedDefaults.size() > 0 &&
+	    ElementUtils.isElementFromByteCode(annotationScope)) ||
+	    (isScopeAccessibleField && this.accessibleFieldsAsUntyped)) {
+
 	    //System.out.println("In if statement");
             for (Default def : untypedDefaults) {
 		//System.out.println("Apply default: " + def);

@@ -34,6 +34,8 @@ public class GradualNullnessAnnotatedTypeFactory extends NullnessAnnotatedTypeFa
 			       DefaultLocation.EXPLICIT_UPPER_BOUNDS);
 	defs.addUntypedDefault(AnnotationUtils.fromClass(elements, Dynamic.class),
 			       DefaultLocation.FIELD);
+
+	defs.treatAccessibleFieldsAsUntyped();
     }
 
     @Override

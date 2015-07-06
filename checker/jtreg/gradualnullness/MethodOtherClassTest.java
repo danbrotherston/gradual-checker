@@ -9,7 +9,7 @@
 public class MethodOtherClassTest {
   public static void main(String [] args) {}
 
-  MethodOtherClassTestOtherClass foo = new MethodOtherClassTestOtherClass();
+  final MethodOtherClassTestOtherClass foo = new MethodOtherClassTestOtherClass();
 
   void a() {
     foo.aother();

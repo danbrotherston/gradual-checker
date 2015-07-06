@@ -1,5 +1,5 @@
 public class MethodOtherClassTestOtherClass {
-  MethodOtherClassTest foo = new MethodOtherClassTest();
+  final MethodOtherClassTest foo = new MethodOtherClassTest();
   void aother() {
   }
 
