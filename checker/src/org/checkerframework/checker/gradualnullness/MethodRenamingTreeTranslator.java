@@ -112,6 +112,7 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	result = renameMethodApplication(tree);
     }
 
+    @Override
     public void visitMethodDef(JCTree.JCMethodDecl tree) {
 	Element prevSymbolOwner = lastSymbolOwner;
 	lastSymbolOwner = tree.sym;

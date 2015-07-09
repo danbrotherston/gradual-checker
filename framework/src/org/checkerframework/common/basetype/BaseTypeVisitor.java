@@ -2132,7 +2132,18 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
 
         treeReceiver.addAnnotations(rcv.getEffectiveAnnotations());
 
-        if (!atypeFactory.getTypeHierarchy().isSubtype(treeReceiver, methodReceiver)) {
+        AnnotationMirror dyn = AnnotationUtils.fromClass(elements, Dynamic.class);
+	boolean success = false;
+        if (AnnotatedTypes.containsModifier(treeReceiver, dyn)) {
+            success = dynamicCheck(treeReceiver, methodReceiver, node);
+        } else if (AnnotatedTypes.containsModifier(methodReceiver, dyn)) {
+            // Do insertion code here.
+            success = true;
+        } else {
+            success = atypeFactory.getTypeHierarchy().isSubtype(treeReceiver, methodReceiver);
+        }
+
+        if (!success) {
             checker.report(Result.failure("method.invocation.invalid",
                 TreeUtils.elementFromUse(node),
                 treeReceiver.toString(), methodReceiver.toString()), node);

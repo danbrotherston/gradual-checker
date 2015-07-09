@@ -97,6 +97,8 @@ public class RuntimeCheckTreeTranslator extends ReplacingTreeTranslator {
 	    // parent until we get a statement.  This must terminate since every expression is
 	    // contained within a statement.
 	    TreePath statementToReplace = location.getKey();
+	    // System.out.println("First statement: " + statementToReplace.getLeaf());
+	    // System.out.println("Given tree: " + location.getValue().getKey());
 	    while (!(statementToReplace.getLeaf() instanceof StatementTree)
 		   && statementToReplace != null) {
 		statementToReplace = statementToReplace.getParentPath();
@@ -107,7 +109,7 @@ public class RuntimeCheckTreeTranslator extends ReplacingTreeTranslator {
 	    // If the statement is a VarDecl we must treat it specially to preserve scope.
 	    if (statementToReplace.getLeaf() instanceof JCTree.JCVariableDecl) {
 		// Build a runtime check.  VarDecls must always be contained within a JCBlock
-		// for valid java programs so we know its parent will be a JCBlock.
+		// for valid java programs so we know its parent will be a JCBlock
 		Map.Entry<JCTree, JCTree> check =
 		    checkBuilder.buildVarDeclRuntimeCheck((JCTree.JCExpression)
 							  location.getValue().getKey(),
@@ -145,6 +147,7 @@ public class RuntimeCheckTreeTranslator extends ReplacingTreeTranslator {
 		leftToAttributeStatic.put(check.getValue(), (JCTree) (location.getValue().getKey()));
 		leftToAttributeStatic.put(check.getKey(), (JCTree) (statementToReplace.getLeaf()));
 	    }
+	    // System.out.println("Statement to replace is now: " + statementToReplace.getLeaf());
 	}
 
 	return replacementMap;

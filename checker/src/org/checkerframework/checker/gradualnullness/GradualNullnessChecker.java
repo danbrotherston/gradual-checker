@@ -82,6 +82,8 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
     public void typeProcess(TypeElement element, TreePath path) {
 	// First perform normal typechecking.
 	// System.out.println("Starting processing Element: " + element);
+	// System.out.println("Before typecheck tree: " +
+	// 		   ((JCTree)path.getCompilationUnit()).toString());
 	super.typeProcess(element, path);
 	// System.out.println("Processing Element: " + element);
 
@@ -98,6 +100,7 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 
         JCTree tree = (JCTree) path.getCompilationUnit();
 	try {
+	    // System.out.println("After typecheck tree: " + tree);
 	    // Setup runtime check configuration.
 	    Method runtimeCheck =
 		(NullnessRuntimeCheck.class).getDeclaredMethod("runtimeCheck",
@@ -113,12 +116,13 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 		new RuntimeCheckBuilder(this, NullnessRuntimeCheck.class, runtimeCheck,
 					runtimeCheckFailure, getProcessingEnvironment());
 
+	    // System.out.println("Tree 1: " + tree);
 	    // Insert runtime checks.
 	    RuntimeCheckTreeTranslator replacer =
 		new RuntimeCheckTreeTranslator(this, getProcessingEnvironment(), path,
 					       runtimeCheckLocations, checkBuilder);
 
-	    // System.out.println("Original Tree");
+	    // System.out.println("Tree with new methods");
 	    // System.out.println(tree);
 	    tree.accept(replacer);
 
@@ -129,11 +133,11 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 		new AttributingTreeTranslator(this, getProcessingEnvironment(), path,
 					      unattributedTrees);
 
-	    // System.out.println("Modified Tree");
+	    // System.out.println("Tree with new methods");
 	    // System.out.println(tree);
 	    tree.accept(translator);
 
-	    // System.out.println("Tree with new methods");
+	    // System.out.println("Modified tree");
 	    // System.out.println(tree);
 
 	    MethodRenamingTreeTranslator methodRenamer =
