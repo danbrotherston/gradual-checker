@@ -6,6 +6,7 @@
 \usepackage{graphicx}
 \usepackage{hevea}
 \usepackage{url}
+\usepackage{color}
 \usepackage{hyperref}
 % Not supported by Hevea, so don't bother: \usepackage{minitoc}
 \usepackage{proof}
@@ -110,34 +111,46 @@
 
 
 % Reference to Checker Framework Javadoc for a class (not a method, etc.).
-% Arg 1: directory under checker/, including internal "/", but no leading
-% or trailing "/".
+% Arg 1: directory under org/checkerframework/, including internal "/", but
+% no leading or trailing "/".
 % Arg 2: class name.
 % In the printed version, only the base class name appears.
 % In the HTML version, it's a link to the Javadoc.
 \newcommand{\refclass}[2]{\href{api/org/checkerframework/#1/#2.html}{\<#2>}}
 
 % Reference to Checker Framework Javadoc for a type qualifier/annotation class
-% (not a method, etc.).  This prepends an @ to the qualifier name.
+% (not a method, etc.).  Like \refclass, but prepends an @ to the qualifier name.
 \newcommand{\refqualclass}[2]{\href{api/org/checkerframework/#1/#2.html}{\<@#2>}}
 
+% Reference to Checker Framework Javadoc for a type qualifier/annotation class
+% (not a method, etc.) that takes parameters.  This prepends an @ to the
+% qualifier name and includes parentheses around the parameters.
+\newcommand{\refqualclasswithparams}[3]{\href{api/org/checkerframework/#1/#2.html}{\<@#2>}\<(#3)>}
 
 % Reference to Checker Framework Javadoc for a method or field.).
-% Arg 1: package name using "/" as a separator, with no leading or trailing "/".
-%  example: "checker/nullness/quals"
+% Arg 1: package name under org/checkerframework, using "/" as a separator,
+% with no leading or trailing "/". example: "checker/nullness/qual"
 % Arg 2: class name.
 % Arg 3: method name.
-% Arg 4: fully-qualified arguments.  Example: "(T)"
+% Arg 4: fully-qualified arguments.  Example: "(T)".  For Java 8, may need
+% to use "-T-" with dashes instead of parentheses.
 % In the printed version, only "class.method" appears.
 % In the HTML version, it's a link to the Javadoc.
 \newcommand{\refmethod}[4]{\href{api/org/checkerframework/#1/#2.html\##3#4}{\<#2.#3>}}
+% Omits the class name in the visible text; is terser.  Good for mentioning
+% a method that needs to be overridden.
+\newcommand{\refmethodterse}[4]{\href{api/org/checkerframework/#1/#2.html\##3#4}{\<#3>}}
+% Like refmethod, but formatted more concisely as ``field'' instead of
+% ``Class.field''.  The last argument is usually empty {}.
+\newcommand{\refenum}[4]{\href{api/org/checkerframework/#1/#2.html\##3#4}{\<#3>}}
+
 % Reference to Sun Javadoc.
 % Arg 1: .html reference, without the .../api/ prefix
 % Arg 2: What will appear in the formatted manual.
 % Do not use \url in the body of any macro
-\newcommand{\sunjavadoc}[2]{\href{http://types.cs.washington.edu/checker-framework/jdk-api/jdk/#1}{\<#2>}}
+\newcommand{\sunjavadoc}[2]{\href{http://docs.oracle.com/javase/8/docs/api/#1}{\<#2>}}
 % Like \sunjavadoc, but for annotations and prepends "@".
-\newcommand{\sunjavadocanno}[2]{\href{http://types.cs.washington.edu/checker-framework/jdk-api/jdk/#1}{\<@#2>}}
+\newcommand{\sunjavadocanno}[2]{\href{http://docs.oracle.com/javase/8/docs/api/#1}{\<@#2>}}
 
 
 \newcommand{\refwithpage}[1]{\ref{#1}, page~\pageref{#1}}

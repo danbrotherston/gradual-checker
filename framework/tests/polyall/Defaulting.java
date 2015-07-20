@@ -61,7 +61,7 @@ class Defaulting {
         @DefaultQualifier(value=H1S2.class, locations={DefaultLocation.OTHERWISE})
     })
     class TestConstructorParameter {
- 
+
         TestConstructorParameter (Object p) {
             @H1S1 Object l1 = p;
             //:: error: (assignment.type.incompatible)
@@ -110,14 +110,14 @@ class Defaulting {
         @DefaultQualifier(value=H1S1.class, locations={DefaultLocation.RECEIVERS})
     })
     public class ReceiverDefaulting {
-        public ReceiverDefaulting(){};
-        public void m(){}
+        public ReceiverDefaulting() {};
+        public void m() {}
     }
 
     @DefaultQualifiers({
         @DefaultQualifier(value=H1Top.class, locations={DefaultLocation.LOCAL_VARIABLE}),
     })
-    class TestReceiver{
+    class TestReceiver {
 
         void call() {
             @H1S1 ReceiverDefaulting r2 =  new @H1S1 ReceiverDefaulting();

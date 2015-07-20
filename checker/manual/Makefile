@@ -8,12 +8,14 @@ manual.tex \
 manual-style.tex \
 introduction.tex \
 nullness-checker.tex \
+map-key-checker.tex \
 interning-checker.tex \
 lock-checker.tex \
 fenum-checker.tex \
 tainting-checker.tex \
 regex-checker.tex \
 formatter-checker.tex \
+i18n-format-checker.tex \
 propkey-checker.tex \
 signature-checker.tex \
 guieffect-checker.tex \
@@ -53,7 +55,7 @@ manual.pdf: bib-update figures-all
 	while grep "Rerun to get" manual.log; do pdflatex manual.tex; done
 
 html: manual.html
-manual.html: manual.pdf
+manual.html: manual.pdf CFLogo.png favicon-checkerframework.png
 	hevea -fix -exec xxdate.exe manual.tex
 	./add-favicon-to-manual
 # The following three lines are only necessary when using Hevea before version 2.04
@@ -65,15 +67,25 @@ manual.html: manual.pdf
 #	perl -pi -e 's/(<!--TOC section Introduction-->)/$$1\n\n<p>Contents:<\/p>\n<!-- start toc.  do not edit; run html-update-toc instead -->\n<!-- end toc -->\n\n<br>\n/' manual.html
 #	html-update-toc manual.html
 
-export BIBINPUTS = $BIBINPUTS:.:bib
+CFLogo.png: logo/Logo/CFLogo.png
+	cp -p $< $@
 
+favicon-checkerframework.png: logo/Checkmark/CFCheckmark_favicon.png
+	cp -p $< $@
+
+export BIBINPUTS = $BIBINPUTS:.:bib
 bib:
-	hg clone https://code.google.com/p/plume-bib/ bib
+ifdef PLUMEBIB
+	ln -s ${PLUMEBIB} bib
+else
+	git clone https://github.com/mernst/plume-bib.git bib
+endif
 .PHONY: bib-update
 bib-update: bib
-# To skip running the hg command, invoke make like this:  make NOHG=1 ...
-ifndef NOHG
-	-(cd bib && hg pull -u && make)
+# Even if this command fails, it does not terminate the make job.
+# However, to skip it, invoke make as:  make NOGIT=1 ...
+ifndef NOGIT
+	-(cd bib && git pull && make)
 endif
 
 # Leaves manual.html, and .svg files that it references.
@@ -81,7 +93,7 @@ clean:
 	@\rm -f doc *.aux *.blg *.dvi *.haux *.htoc *.idx *.ilg *.ind *.log *.out *.pdf *.ps *.toc
 
 very_clean: clean
-	@\rm manual.html
+	@\rm manual.html CFLogo.png
 
 .PHONY: checklink
 checklink:

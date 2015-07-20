@@ -1,4 +1,5 @@
 package java.util;
+
 import org.checkerframework.dataflow.qual.Pure;
 import org.checkerframework.dataflow.qual.SideEffectFree;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -40,8 +41,8 @@ public class Arrays {
   public static int binarySearch(float[] a1, int a2, int a3, float a4) { throw new RuntimeException("skeleton method"); }
   public static int binarySearch(@Nullable Object[] a1, @Nullable Object a2) { throw new RuntimeException("skeleton method"); }
   public static int binarySearch(@Nullable Object[] a1, int a2, int a3, @Nullable Object a4) { throw new RuntimeException("skeleton method"); }
-  public static <T extends @Nullable Object> int binarySearch(T[] a1, T a2, @Nullable Comparator<? super T> a3) { throw new RuntimeException("skeleton method"); }
-  public static <T extends @Nullable Object> int binarySearch(T[] a1, int a2, int a3, T a4, @Nullable Comparator<? super T> a5) { throw new RuntimeException("skeleton method"); }
+  public static <T> int binarySearch(T[] a1, T a2, @Nullable Comparator<? super T> a3) { throw new RuntimeException("skeleton method"); }
+  public static <T> int binarySearch(T[] a1, int a2, int a3, T a4, @Nullable Comparator<? super T> a5) { throw new RuntimeException("skeleton method"); }
   @Pure public static boolean equals(long @Nullable [] a1, long @Nullable [] a2) { throw new RuntimeException("skeleton method"); }
   @Pure public static boolean equals(int @Nullable [] a1, int @Nullable [] a2) { throw new RuntimeException("skeleton method"); }
   @Pure public static boolean equals(short @Nullable [] a1, short @Nullable [] a2) { throw new RuntimeException("skeleton method"); }
@@ -69,8 +70,8 @@ public class Arrays {
   public static void fill(float[] a1, int a2, int a3, float a4) { throw new RuntimeException("skeleton method"); }
   public static void fill(@PolyNull Object[] a1, @PolyNull Object a2) { throw new RuntimeException("skeleton method"); }
   public static void fill(@PolyNull Object[] a1, int a2, int a3, @PolyNull Object a4) { throw new RuntimeException("skeleton method"); }
-  public static <T extends @Nullable Object> @Nullable T [] copyOf(T [] a1, int a2) { throw new RuntimeException("skeleton method"); }
-  public static <T extends @Nullable Object, U extends @Nullable Object> @Nullable T [] copyOf(U [] a1, int a2, Class<? extends T[]> a3) { throw new RuntimeException("skeleton method"); }
+  public static <T> @Nullable T [] copyOf(T [] a1, int a2) { throw new RuntimeException("skeleton method"); }
+  public static <T, U> @Nullable T [] copyOf(U [] a1, int a2, Class<? extends T[]> a3) { throw new RuntimeException("skeleton method"); }
   public static byte[] copyOf(byte[] a1, int a2) { throw new RuntimeException("skeleton method"); }
   public static short[] copyOf(short[] a1, int a2) { throw new RuntimeException("skeleton method"); }
   public static int[] copyOf(int[] a1, int a2) { throw new RuntimeException("skeleton method"); }
@@ -79,8 +80,8 @@ public class Arrays {
   public static float[] copyOf(float[] a1, int a2) { throw new RuntimeException("skeleton method"); }
   public static double[] copyOf(double[] a1, int a2) { throw new RuntimeException("skeleton method"); }
   public static boolean[] copyOf(boolean[] a1, int a2) { throw new RuntimeException("skeleton method"); }
-  public static <T extends @Nullable Object> @Nullable T[] copyOfRange(T[] a1, int a2, int a3) { throw new RuntimeException("skeleton method"); }
-  public static <T extends @Nullable Object, U extends @Nullable Object> @Nullable T[] copyOfRange(U[] a1, int a2, int a3, Class<? extends T[]> a4) { throw new RuntimeException("skeleton method"); }
+  public static <T> @Nullable T[] copyOfRange(T[] a1, int a2, int a3) { throw new RuntimeException("skeleton method"); }
+  public static <T, U> @Nullable T[] copyOfRange(U[] a1, int a2, int a3, Class<? extends T[]> a4) { throw new RuntimeException("skeleton method"); }
   public static byte[] copyOfRange(byte[] a1, int a2, int a3) { throw new RuntimeException("skeleton method"); }
   public static short[] copyOfRange(short[] a1, int a2, int a3) { throw new RuntimeException("skeleton method"); }
   public static int[] copyOfRange(int[] a1, int a2, int a3) { throw new RuntimeException("skeleton method"); }

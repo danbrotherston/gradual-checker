@@ -2,6 +2,7 @@ package org.checkerframework.framework.test;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -17,6 +18,7 @@ public abstract class ParameterizedCheckerTest extends CheckerTest {
     public ParameterizedCheckerTest(File testFile,
             Class<? extends AbstractProcessor> checker, String checkerDir, String... checkerOptions) {
         super(checker, checkerDir, checkerOptions);
+        assert Arrays.asList(checkerOptions).contains("-Anomsgtext");
         this.testFile = testFile;
     }
 

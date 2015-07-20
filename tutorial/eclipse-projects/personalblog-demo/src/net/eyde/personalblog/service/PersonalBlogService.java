@@ -154,13 +154,13 @@ public class PersonalBlogService {
 
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.MONTH, -1);
-        /*@SuppressWarnings("untainted")*/
+        /*@SuppressWarnings("tainting")*/
         String startdate = (/*@Untainted*/ String) qf.format(cal.getTime());
 
-        posts = executeQuery(constructQuery(
-                    "from post in class net.eyde.personalblog.beans.Post ",
-                    "where post.created > '", startdate,
-                    "' order by post.created desc"));
+        posts = executeQuery(
+                    "from post in class net.eyde.personalblog.beans.Post " +
+                    "where post.created > '" + startdate +
+                    "' order by post.created desc");
 
         return posts;
     }
@@ -168,34 +168,18 @@ public class PersonalBlogService {
     public List<?> getPostsByCategory(String category) throws ServiceException {
         List<?> posts = null;
 
-        posts = executeQuery(constructQuery(
-                    "from post in class net.eyde.personalblog.beans.Post ",
-                    "where post.category like '%", category,
-                    "%' order by post.created desc"));
+        posts = executeQuery(
+                    "from post in class net.eyde.personalblog.beans.Post " +
+                    "where post.category like '%" + category +
+                    "%' order by post.created desc");
 
         return posts;
     }
 
-    /**
-     * Constructs an untainted query from untainted strings.
-     * It is a simple concatenation operation.
-     *
-     * This method is helpful only when using the Basic Checker,
-     * which cannot detect the type of string concatination, unlike
-     * the Tainting Checker.
-     */
-    @SuppressWarnings("untainted")
-    private @Untainted String constructQuery(@Untainted String ...strings) {
-        StringBuilder sb = new StringBuilder();
-        for (String s : strings)
-            sb.append(s);
-        return (/*@Untainted*/ String) sb.toString();
-    }
-
-    @SuppressWarnings({"unchecked"})
     private <T> List<T> executeQuery(@Untainted String query) {
         try {
             Session session = sf.openSession();
+            @SuppressWarnings({"unchecked"})
             List<T> lst = (List<T>) session.find(query);
             session.close();
             return lst;

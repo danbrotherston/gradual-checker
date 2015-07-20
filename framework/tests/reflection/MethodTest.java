@@ -10,7 +10,7 @@ public class MethodTest {
     @Sibling1 int sibling1;
     @Sibling2 int sibling2;
 
-    public void real_class(){
+    public void real_class() {
         try {
         Class<?> c = Object.class;
         Method m = c.getMethod("equals", Object.class);
@@ -217,7 +217,7 @@ public class MethodTest {
         }
     }
 
-    public void test(){
+    public void test() {
     }
 
     public void fail1() {
@@ -291,7 +291,7 @@ public class MethodTest {
     }
 
     public void fail7() {
-        @Sibling2 MethodTest inst = new @Sibling2 MethodTest(); 
+        @Sibling2 MethodTest inst = new @Sibling2 MethodTest();
         try {
             Class<?> c = MethodTest.class;
             Method m = c.getMethod("convertSibling2ToSibling1", new Class[]{Integer.class});
@@ -350,7 +350,7 @@ public class MethodTest {
         return (@Sibling1 int) 1;
     }
 
-    // TODO: Does the testing framework somehow support the compilation of 
+    // TODO: Does the testing framework somehow support the compilation of
     // multiple files at the same time?
     private class SubClass extends SuperClass {
     }

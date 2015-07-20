@@ -6,9 +6,14 @@ import org.checkerframework.framework.util.typeinference.solver.TargetConstraint
 import org.checkerframework.framework.util.typeinference.solver.TargetConstraints.Subtypes;
 import org.checkerframework.framework.util.typeinference.solver.TargetConstraints.Supertypes;
 
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.type.TypeVariable;
-import java.util.*;
 
 /**
  * ConstraintMap holds simplified versions of the TUConstraints for ALL type variable for which
@@ -23,10 +28,10 @@ import java.util.*;
  */
 public class ConstraintMap {
 
-    private Map<TypeVariable, TargetConstraints> targetToRecords = new LinkedHashMap<>();
+    private final Map<TypeVariable, TargetConstraints> targetToRecords = new LinkedHashMap<>();
 
     public ConstraintMap(Set<TypeVariable> targets) {
-        for(final TypeVariable target : targets) {
+        for (final TypeVariable target : targets) {
             targetToRecords.put(target, new TargetConstraints(target));
         }
     }
@@ -44,15 +49,18 @@ public class ConstraintMap {
 
     /**
      * @return The set of all targets passed to the constructor of this constraint map (a target will
-     * appear in this list whether or not it has any cosntraints added)
+     * appear in this list whether or not it has any constraints added)
      */
     public Set<TypeVariable> getTargets() {
         return targetToRecords.keySet();
     }
 
+    /**
+     * Add a constraint indicating that the equivalent is equal to target in the given qualifier hierarchies
+     */
     public void addTargetEquality(final TypeVariable target, final TypeVariable equivalent, Set<AnnotationMirror> hierarchies) {
-        Equalities equalities = targetToRecords.get(target).equalities;
-        Set<AnnotationMirror> equivalentTops = equalities.targets.get(equivalent);
+        final Equalities equalities = targetToRecords.get(target).equalities;
+        final Set<AnnotationMirror> equivalentTops = equalities.targets.get(equivalent);
         if (equivalentTops == null) {
             equalities.targets.put(equivalent, new HashSet<>(hierarchies));
         } else {
@@ -60,8 +68,11 @@ public class ConstraintMap {
         }
     }
 
+    /**
+     * Add a constraint indicating that target has primary annotations equal to the given annotations
+     */
     public void addPrimaryEqualities(final TypeVariable target, QualifierHierarchy qualHierarchy, final Set<AnnotationMirror> annos) {
-        Equalities equalities = targetToRecords.get(target).equalities;
+        final Equalities equalities = targetToRecords.get(target).equalities;
 
         for (final AnnotationMirror anno : annos) {
             final AnnotationMirror top = qualHierarchy.getTopAnnotation(anno);
@@ -71,9 +82,13 @@ public class ConstraintMap {
         }
     }
 
+    /**
+     * Add a constraint indicating that target is a supertype of subtype in the given qualifier hierarchies
+     * @param hierarchies a set of TOP annotations
+     */
     public void addTargetSupertype(final TypeVariable target, final TypeVariable subtype, Set<AnnotationMirror> hierarchies) {
-        Supertypes supertypes = targetToRecords.get(target).supertypes;
-        Set<AnnotationMirror> supertypeTops = supertypes.targets.get(subtype);
+        final Supertypes supertypes = targetToRecords.get(target).supertypes;
+        final Set<AnnotationMirror> supertypeTops = supertypes.targets.get(subtype);
         if (supertypeTops == null) {
             supertypes.targets.put(subtype, new HashSet<>(hierarchies));
         } else {
@@ -81,9 +96,13 @@ public class ConstraintMap {
         }
     }
 
+    /**
+     * Add a constraint indicating that target is a supertype of subtype in the given qualifier hierarchies
+     * @param hierarchies a set of TOP annotations
+     */
     public void addTypeSupertype(final TypeVariable target, final AnnotatedTypeMirror subtype, Set<AnnotationMirror> hierarchies) {
-        Supertypes supertypes = targetToRecords.get(target).supertypes;
-        Set<AnnotationMirror> supertypeTops = supertypes.types.get(subtype);
+        final Supertypes supertypes = targetToRecords.get(target).supertypes;
+        final Set<AnnotationMirror> supertypeTops = supertypes.types.get(subtype);
         if (supertypeTops == null) {
             supertypes.types.put(subtype, new HashSet<>(hierarchies));
         } else {
@@ -91,9 +110,12 @@ public class ConstraintMap {
         }
     }
 
+    /**
+     * Add a constraint indicating that target's primary annotations are subtypes of the given annotations
+     */
     public void addPrimarySupertype(final TypeVariable target, QualifierHierarchy qualifierHierarchy, final Set<AnnotationMirror> annos) {
-        Supertypes supertypes = targetToRecords.get(target).supertypes;
-        for( AnnotationMirror anno : annos) {
+        final Supertypes supertypes = targetToRecords.get(target).supertypes;
+        for (final AnnotationMirror anno : annos) {
             final AnnotationMirror top = qualifierHierarchy.getTopAnnotation(anno);
             Set<AnnotationMirror> entries = supertypes.primaries.get(top);
             if (entries == null) {
@@ -104,9 +126,13 @@ public class ConstraintMap {
         }
     }
 
+    /**
+     * Add a constraint indicating that target is a subtype of supertype in the given qualifier hierarchies
+     * @param hierarchies a set of TOP annotations
+     */
     public void addTargetSubtype(final TypeVariable target, final TypeVariable supertype, Set<AnnotationMirror> hierarchies) {
-        Subtypes subtypes = targetToRecords.get(target).subtypes;
-        Set<AnnotationMirror> subtypesTops = subtypes.targets.get(supertype);
+        final Subtypes subtypes = targetToRecords.get(target).subtypes;
+        final Set<AnnotationMirror> subtypesTops = subtypes.targets.get(supertype);
         if (subtypesTops == null) {
             subtypes.targets.put(supertype, new HashSet<>(hierarchies));
         } else {
@@ -114,9 +140,13 @@ public class ConstraintMap {
         }
     }
 
+    /**
+     * Add a constraint indicating that target is a subtype of supertype in the given qualifier hierarchies
+     * @param hierarchies a set of TOP annotations
+     */
     public void addTypeSubtype(final TypeVariable target, final AnnotatedTypeMirror supertype, Set<AnnotationMirror> hierarchies) {
-        Subtypes subtypes = targetToRecords.get(target).subtypes;
-        Set<AnnotationMirror> subtypesTops = subtypes.targets.get(supertype);
+        final Subtypes subtypes = targetToRecords.get(target).subtypes;
+        final Set<AnnotationMirror> subtypesTops = subtypes.targets.get(supertype);
         if (subtypesTops == null) {
             subtypes.types.put(supertype, new HashSet<>(hierarchies));
         } else {
@@ -124,9 +154,12 @@ public class ConstraintMap {
         }
     }
 
+    /**
+     * Add a constraint indicating that target's primary annotations are subtypes of the given annotations
+     */
     public void addPrimarySubtypes(final TypeVariable target, QualifierHierarchy qualifierHierarchy, final Set<AnnotationMirror> annos) {
-        Subtypes subtypes = targetToRecords.get(target).subtypes;
-        for( AnnotationMirror anno : annos) {
+        final Subtypes subtypes = targetToRecords.get(target).subtypes;
+        for (final AnnotationMirror anno : annos) {
             final AnnotationMirror top = qualifierHierarchy.getTopAnnotation(anno);
             Set<AnnotationMirror> entries = subtypes.primaries.get(top);
             if (entries == null) {
@@ -137,9 +170,13 @@ public class ConstraintMap {
         }
     }
 
+    /**
+     * Add a constraint indicating that target is equal to type in the given hierarchies
+     * @param hierarchies a set of TOP annotations
+     */
     public void addTypeEqualities(TypeVariable target, AnnotatedTypeMirror type, Set<AnnotationMirror> hierarchies) {
-        Equalities equalities = targetToRecords.get(target).equalities;
-        Set<AnnotationMirror> equalityTops = equalities.types.get(type);
+        final Equalities equalities = targetToRecords.get(target).equalities;
+        final Set<AnnotationMirror> equalityTops = equalities.types.get(type);
         if (equalityTops == null) {
             equalities.types.put(type, new HashSet<>(hierarchies));
         } else {

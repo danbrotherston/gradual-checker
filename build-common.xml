@@ -1,5 +1,5 @@
 <!--
-  This is a configuration file for use by Ant when building the 
+  This is a configuration file for use by Ant when building the
   Checker Framework.
   This file is shared between all subprojects.
 -->
@@ -65,6 +65,12 @@
                 string="${compiler.version}"
                 substring="${compiler.version.goal.java9}"/>
         </condition>
+
+        <!-- This file is looked for by Javadoc, this will ensure it always shows up in the api directory
+             regardless of which subproject javadoc you call. -->
+        <property name="dejavuDir" value="${api.doc}/resources/fonts/"/>
+        <mkdir dir="${dejavuDir}"/>
+        <touch file="${dejavuDir}/dejavu.css"/>
 
 	<condition property="compiler.exists">
             <or>

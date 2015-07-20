@@ -7,6 +7,14 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.PolyNull;
 */
 
+import org.checkerframework.dataflow.qual.Pure;
+import org.checkerframework.dataflow.qual.SideEffectFree;
+import org.checkerframework.framework.qual.PolymorphicQualifier;
+import org.checkerframework.framework.type.AnnotatedTypeFactory;
+import org.checkerframework.framework.type.QualifierHierarchy;
+import org.checkerframework.javacutil.AnnotationUtils;
+import org.checkerframework.javacutil.ErrorReporter;
+
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Collections;
@@ -16,14 +24,6 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
-
-import org.checkerframework.dataflow.qual.Pure;
-import org.checkerframework.dataflow.qual.SideEffectFree;
-import org.checkerframework.framework.qual.PolymorphicQualifier;
-import org.checkerframework.framework.type.AnnotatedTypeFactory;
-import org.checkerframework.framework.type.QualifierHierarchy;
-import org.checkerframework.javacutil.AnnotationUtils;
-import org.checkerframework.javacutil.ErrorReporter;
 
 /**
  * Represents the type qualifier hierarchy of a type system.
@@ -65,10 +65,12 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
 
         /**
          * Map from qualifier hierarchy to the corresponding polymorphic qualifier.
-         * The key is the declared qualifier given in @PolymorphicQualifier.
-         * Note that the non-type-qualifier key "PolymorphicQualifier" is used
-         * for a type system with a single hierarchy that gives no explicit top.
-         * Key "null" is used for the PolyAll qualifier.
+         * The key is:
+         *  * the argument to @PolymorphicQualifier (typically the top
+         *    qualifier in the hierarchy), or
+         *  * "PolymorphicQualifier" if @PolymorphicQualifier is used without
+         *    an argument, or
+         *  * null, for the PolyAll qualifier.
          */
         protected final Map<AnnotationMirror, AnnotationMirror> polyQualifiers;
 
@@ -499,16 +501,14 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
     /**
      * Add the relationships for polymorphic qualifiers.
      *
-     * A polymorphic qualifier needs to be (take {@code PolyNull} for example)
+     * A polymorphic qualifier needs to be (take {@code PolyNull} for example):
      * 1. a subtype of the top qualifier (e.g. {@code Nullable})
      * 2. a supertype of all the bottom qualifiers  (e.g. {@code NonNull})
      *
      * Field supertypesMap is not set yet when this method is called - use fullMap instead.
      */
-    /* The method gets all required parameters passed in and could be static. However,
-     * we want to allow subclasses to adapt the behavior and therefore make it an instance method.
-     */
-    // TODO: document
+    // The method gets all required parameters passed in and could be static. However,
+    // we want to allow subclasses to adapt the behavior and therefore make it an instance method.
     protected void addPolyRelations(QualifierHierarchy qualHierarchy,
             Map<AnnotationMirror, Set<AnnotationMirror>> fullMap,
             Map<AnnotationMirror, AnnotationMirror> polyQualifiers,
@@ -541,8 +541,8 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
                     }
                 } else {
                     ErrorReporter.errorAbort("MultiGraphQualifierHierarchy.addPolyRelations: " +
-                            "incorrect top qualifier given in polymorphic qualifier (specify qualifier): " + polyQualifier +
-                            "; possible top qualifiers: " + tops);
+                            "incorrect or missing top qualifier given in polymorphic qualifier " + polyQualifier +
+                            "; declTop = " + declTop + "; possible top qualifiers: " + tops);
                 }
             } else {
                 // Ensure that it's really the top of the hierarchy
@@ -655,11 +655,11 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
         Set<AnnotationMirror> outset = AnnotationUtils.createAnnotationSet();
         outset.addAll(inset);
 
-        for( AnnotationMirror a1 : inset ) {
+        for (AnnotationMirror a1 : inset) {
             Iterator<AnnotationMirror> outit = outset.iterator();
-            while( outit.hasNext() ) {
+            while (outit.hasNext()) {
                 AnnotationMirror a2 = outit.next();
-                if( a1 != a2 && isSubtype(a1, a2) ) {
+                if (a1 != a2 && isSubtype(a1, a2)) {
                     outit.remove();
                 }
             }
@@ -669,9 +669,6 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
 
     /**
      * Finds all the super qualifiers for a qualifier.
-     *
-     * @param anno
-     * @param supertypesMap
      */
     private static Set<AnnotationMirror>
     findAllSupers(AnnotationMirror anno,
@@ -751,11 +748,11 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
         Set<AnnotationMirror> outset = AnnotationUtils.createAnnotationSet();
         outset.addAll(inset);
 
-        for( AnnotationMirror a1 : inset ) {
+        for (AnnotationMirror a1 : inset) {
             Iterator<AnnotationMirror> outit = outset.iterator();
-            while( outit.hasNext() ) {
+            while (outit.hasNext()) {
                 AnnotationMirror a2 = outit.next();
-                if( a1 != a2 && isSubtype(a2, a1) ) {
+                if (a1 != a2 && isSubtype(a2, a1)) {
                     outit.remove();
                 }
             }

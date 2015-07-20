@@ -1,5 +1,7 @@
 syntax: glob
 
+*TODOJDK
+
 # git
 .gitignore
 .git
@@ -27,9 +29,10 @@ api
 build
 dist
 stubparser/docs/api
-*.jar
+# Don't want to ignore .jar files in checker/lib/
+# *.jar
+checker/jdk/jdk*.jar
 checker/jdk/**/*.class
-checker/jdk/jdk.jar
 *.pyc
 checker/build-temp
 checker/examples/**/*.class
@@ -90,8 +93,12 @@ checker/tests/nullness-temp/*.class
 
 checker/jtreg/multipleexecutions/Main.class
 
+tutorial/eclipse-projects.zip
+tutorial/eclipse-projects/README.txt
 tutorial/eclipse-projects/personalblog-demo/bin/net/eyde/personalblog/service/PersonalBlogService.class
 tutorial/eclipse-projects/personalblog-demo/bin/net/eyde/personalblog/struts/action/ReadAction.class
+tutorial/sourcefiles.zip
+tutorial/src
 
 # release tmps
 tmp

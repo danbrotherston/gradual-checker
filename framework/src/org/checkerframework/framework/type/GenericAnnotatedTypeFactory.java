@@ -26,11 +26,11 @@ import org.checkerframework.framework.flow.CFStore;
 import org.checkerframework.framework.flow.CFTransfer;
 import org.checkerframework.framework.flow.CFValue;
 import org.checkerframework.framework.qual.DefaultFor;
-import org.checkerframework.framework.qual.DefaultForInUntyped;
+import org.checkerframework.framework.qual.DefaultForUnannotatedCode;
 import org.checkerframework.framework.qual.DefaultLocation;
 import org.checkerframework.framework.qual.DefaultQualifier;
+import org.checkerframework.framework.qual.DefaultQualifierForUnannotatedCode;
 import org.checkerframework.framework.qual.DefaultQualifierInHierarchy;
-import org.checkerframework.framework.qual.DefaultQualifierInUntyped;
 import org.checkerframework.framework.qual.ImplicitFor;
 import org.checkerframework.framework.qual.MonotonicQualifier;
 import org.checkerframework.framework.qual.Unqualified;
@@ -44,8 +44,8 @@ import org.checkerframework.framework.type.typeannotator.ImplicitsTypeAnnotator;
 import org.checkerframework.framework.type.typeannotator.ListTypeAnnotator;
 import org.checkerframework.framework.type.typeannotator.PropagationTypeAnnotator;
 import org.checkerframework.framework.type.typeannotator.TypeAnnotator;
-import org.checkerframework.framework.util.defaults.QualifierDefaults;
 import org.checkerframework.framework.util.QualifierPolymorphism;
+import org.checkerframework.framework.util.defaults.QualifierDefaults;
 import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.ErrorReporter;
 import org.checkerframework.javacutil.Pair;
@@ -346,18 +346,18 @@ public abstract class GenericAnnotatedTypeFactory<
      */
     protected QualifierDefaults createQualifierDefaults() {
         QualifierDefaults defs = new QualifierDefaults(elements, this);
-	boolean foundDefaultOtherwise = false;
+        boolean foundDefaultOtherwise = false;
+        boolean foundDefaultOtherwiseForUnannotatedCode = false;
 
         // TODO: Verify that only one default per location type is present.
         for (Class<? extends Annotation> qual : getSupportedTypeQualifiers()) {
             DefaultFor defaultFor = qual.getAnnotation(DefaultFor.class);
             if (defaultFor != null) {
-                defs.addAbsoluteDefaults(AnnotationUtils.fromClass(elements,qual),
-                    defaultFor.value());
+                final DefaultLocation [] locations = defaultFor.value();
+                defs.addAbsoluteDefaults(AnnotationUtils.fromClass(elements,qual), locations);
 
-		if (Arrays.asList(defaultFor.value()).contains(DefaultLocation.OTHERWISE)) {
-		    foundDefaultOtherwise = true;
-		}
+                foundDefaultOtherwise = foundDefaultOtherwise ||
+                        Arrays.asList(locations).contains(DefaultLocation.OTHERWISE);
             }
 
             if (qual.getAnnotation(DefaultQualifierInHierarchy.class) != null) {
@@ -375,7 +375,8 @@ public abstract class GenericAnnotatedTypeFactory<
             }
 	}
 
-	addUntypedDefaultsToQualifierDefaults(defs);
+	foundDefaultOtherwiseForUnannotatedCode =
+            addUnannotatedDefaultsToQualifierDefaults(defs, foundDefaultOtherwiseForUnannotatedCode);
 
         // If Unqualified is a supported qualifier, make it the default.
         // This is for convenience only. Maybe remove.
@@ -386,36 +387,73 @@ public abstract class GenericAnnotatedTypeFactory<
                     DefaultLocation.OTHERWISE);
         }
 
+	/*
+        // Add defaults for unnannotated code if conservative unannotated flag
+        // is passed and no defaults were given.
+        if ((// Temporarily use unsafe for bytecode, unless option given
+             checker.hasOption("safeDefaultsForUnannotatedBytecode") ||
+             // This block may need to be split after safeDefaults... is
+             // reverted to unsafeDefaults...
+             checker.hasOption("useSafeDefaultsForUnannotatedSourceCode")) &&
+            !foundDefaultOtherwiseForUnannotatedCode) {
+          Set<? extends AnnotationMirror> tops = this.qualHierarchy.getTopAnnotations();
+          for (AnnotationMirror top : tops) {
+              defs.addUnannotatedDefault(top, DefaultLocation.RETURNS);
+              defs.addUnannotatedDefault(top, DefaultLocation.UPPER_BOUNDS);
+          }
+          Set<? extends AnnotationMirror> bottoms = this.qualHierarchy.getBottomAnnotations();
+          for (AnnotationMirror bot : bottoms) {
+              defs.addUnannotatedDefault(bot, DefaultLocation.PARAMETERS);
+              defs.addUnannotatedDefault(bot, DefaultLocation.LOWER_BOUNDS);
+              defs.addUnannotatedDefault(bot, DefaultLocation.FIELD);
+              // TODO: this isn't simply DefaultLocation.OTHERWISE, because that
+              // would also apply to type declarations, which isn't currently
+              // working as desired.
+              // See: https://groups.google.com/d/msg/checker-framework-dev/vk2V6ZFKPLk/v3hENw-e7gsJ
+          }
+	  }*/
+
         return defs;
     }
 
-    protected void addUntypedDefaultsToQualifierDefaults(QualifierDefaults defs) {
+    protected boolean addUnannotatedDefaultsToQualifierDefaults(QualifierDefaults defs,
+								boolean foundDefaultOtherwiseForUnannotatedCode) {
 	for (Class<? extends Annotation> qual : getSupportedTypeQualifiers()) {
-	    // Add defaults for untyped code if conservative untyped flag is passed.
-	    if (checker.hasOption("conservativeUntyped")) {
-		DefaultForInUntyped defaultForUntyped = qual.getAnnotation(DefaultForInUntyped.class);
+	    // Add defaults for unannotated code if conservative unannotated flag is passed.
+	    if (// temporarily use unsafe defaults for bytecode, unless option given.
+                checker.hasOption("safeDefaultsForUnannotatedBytecode") ||
+                // This block may need to be split after safeDefaults... is
+                // reverted to unsafeDefaults...
+                checker.hasOption("useSafeDefaultsForUnannotatedSourceCode")) {
 
-		if (defaultForUntyped != null) {
-		    defs.addUntypedDefaults(AnnotationUtils.fromClass(elements, qual),
-			defaultForUntyped.value());
+		DefaultForUnannotatedCode defaultForUnannotated = qual.getAnnotation(DefaultForUnannotatedCode.class);
+
+		if (defaultForUnannotated != null) {
+                    final DefaultLocation [] locations = defaultForUnannotated.value();
+		    defs.addUnannotatedDefaults(AnnotationUtils.fromClass(elements, qual), locations);
+                    // TODO: here and for source code above, should ALL also be
+                    // handled?
+                    foundDefaultOtherwiseForUnannotatedCode = foundDefaultOtherwiseForUnannotatedCode ||
+                        Arrays.asList(locations).contains(DefaultLocation.OTHERWISE);
 		}
 
-		if (qual.getAnnotation(DefaultQualifierInUntyped.class) != null) {
-		    if (defaultForUntyped != null) {
-			// A type qualifier should either have a DefaultForInUntyped or
-			// a DefaultQualifierInUntyped annotation.
+		if (qual.getAnnotation(DefaultQualifierForUnannotatedCode.class) != null) {
+		    if (defaultForUnannotated != null) {
+			// A type qualifier should either have a DefaultForUnannotatedCode or
+			// a DefaultQualifierForUnannotatedCode annotation.
 			ErrorReporter.errorAbort("GenericAnnotatedTypeFactory.createQualifierDefaults: " +
-			    "qualifier has both @DefaultForInUntyped and @DefaultQualifierInUntyped annotations: " +
+			    "qualifier has both @DefaultForUnannotatedCode and @DefaultQualifierForUnannotatedCode annotations: " +
    			    qual.getCanonicalName());
 		    } else {
-			for (DefaultLocation location : QualifierDefaults.validLocationsForUntyped()) {
-  			    defs.addUntypedDefault(AnnotationUtils.fromClass(elements, qual),
-			        location);
-			}
+                        defs.addUnannotatedDefault(AnnotationUtils.fromClass(elements, qual),
+                                                    DefaultLocation.OTHERWISE);
+                        foundDefaultOtherwiseForUnannotatedCode = true;
 		    }
 	      	}
 	    }
         }
+
+        return foundDefaultOtherwiseForUnannotatedCode;
     }
 
     /**
@@ -472,7 +510,7 @@ public abstract class GenericAnnotatedTypeFactory<
     protected IdentityHashMap<Tree, Store> regularExitStores;
 
     /**
-     * A mapping from methods to their a list with all return statements and the
+     * A mapping from methods to a list with all return statements and the
      * corresponding store.
      */
     protected IdentityHashMap<MethodTree, List<Pair<ReturnNode, TransferResult<Value, Store>>>> returnStatementStores;
@@ -656,7 +694,7 @@ public abstract class GenericAnnotatedTypeFactory<
                                     .enclosingClass(getPath(mt))), fieldValues, classTree, false, false);
                 }
 
-                while(lambdaQueue.size() > 0) {
+                while (lambdaQueue.size() > 0) {
                     Pair<LambdaExpressionTree, Store> lambdaPair = lambdaQueue.poll();
                     analyze(queue, lambdaQueue,
                             new CFGLambda(lambdaPair.first), fieldValues, classTree, false, false, lambdaPair.second);
@@ -775,8 +813,14 @@ public abstract class GenericAnnotatedTypeFactory<
         }
 
         if (checker.hasOption("flowdotdir")) {
+
+            String checkerName = checker.getClass().getSimpleName();
+            if (checkerName.endsWith("Checker") || checkerName.endsWith("checker")) {
+                checkerName = checkerName.substring(0, checkerName.length() - "checker".length());
+            }
+
             String dotfilename = checker.getOption("flowdotdir") + "/"
-                    + dotOutputFileName(ast) + ".dot";
+                    + dotOutputFileName(ast) + "_" + checkerName + ".dot";
             // make path safe for Windows
             dotfilename = dotfilename.replace("<", "_").replace(">", "");
             System.err.println("Output to DOT file: " + dotfilename);

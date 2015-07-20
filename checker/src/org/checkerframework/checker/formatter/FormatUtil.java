@@ -23,7 +23,7 @@ public class FormatUtil {
         private final int index;
         private final ConversionCategory cath;
 
-        public Conversion(char c, int index){
+        public Conversion(char c, int index) {
             this.index = index;
             this.cath = ConversionCategory.fromConversionChar(c);
         }
@@ -39,8 +39,8 @@ public class FormatUtil {
 
     /**
      * Returns if the format string is satisfiable, and if the
-     * format's parameters match the passed @link{ConversionCategory}s.
-     * Otherwise an @link{Error} is thrown.
+     * format's parameters match the passed {@link ConversionCategory}s.
+     * Otherwise an {@link Error} is thrown.
      *
      * TODO introduce more such functions, see RegexUtil for examples
      */
@@ -61,7 +61,7 @@ public class FormatUtil {
     }
 
     /**
-     * Throws an exception if the the format is not syntactically valid.
+     * Throws an exception if the format is not syntactically valid.
      */
     public static void tryFormatSatisfiability(String format) throws IllegalFormatException {
         String.format(format, (Object[])null);
@@ -71,7 +71,7 @@ public class FormatUtil {
      * Returns a {@link ConversionCategory} for every conversion found in the
      * format string.
      *
-     * Throws an exception if the the format is not syntactically valid.
+     * Throws an exception if the format is not syntactically valid.
      */
     public static ConversionCategory[] formatParameterCategories(String format) throws IllegalFormatException {
         tryFormatSatisfiability(format);
@@ -103,7 +103,7 @@ public class FormatUtil {
         }
 
         ConversionCategory[] res = new ConversionCategory[maxindex+1];
-        for (int i=0; i<=maxindex ;++i){
+        for (int i = 0; i <= maxindex ;++i) {
             res[i] = conv.containsKey(i)?conv.get(i):ConversionCategory.UNUSED;
         }
         return res;
@@ -144,7 +144,7 @@ public class FormatUtil {
         Matcher m = fsPattern.matcher(format);
         while (m.find()) {
             char c = conversionCharFromFormat(m);
-            switch (c){
+            switch (c) {
             case '%':
             case 'n':
                 break;

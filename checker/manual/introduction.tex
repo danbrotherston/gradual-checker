@@ -42,6 +42,10 @@ The Checker Framework comes with checkers for specific types of errors:
   strings have the right number and type of \<\%> directives (see
   \chapterpageref{formatter-checker})
 \item
+  \ahrefloc{i18n-formatter-checker}{Internationalization Format String Checker}
+  to ensure that i18n format strings have the right number and type of
+  \<\{\}> directives (see \chapterpageref{i18n-formatter-checker})
+\item
   \ahrefloc{propkey-checker}{Property File Checker} to ensure that valid
   keys are used for property files and resource bundles (see
   \chapterpageref{propkey-checker})
@@ -52,7 +56,7 @@ The Checker Framework comes with checkers for specific types of errors:
 % The Compiler Message Key Checker is neither here nor in the advanced
 % type system features chapter because it is really meant for
 % Checker Framework developers and as sample code, and is not meant
-% for Checker Framework users at large.  
+% for Checker Framework users at large.
 \item
   \ahrefloc{signature-checker}{Signature String Checker} to ensure that the
   string representation of a type is properly used, for example in
@@ -179,9 +183,10 @@ synonyms.
 \section{Installation\label{installation}}
 
 This section describes how to install the Checker Framework.
-(If you wish to
-use the Checker Framework from Eclipse, see the Checker Framework Eclipse
-Plugin webpage: \url{http://types.cs.washington.edu/checker-framework/eclipse/}.)
+(If you wish to use the Checker Framework from Eclipse, see the Checker
+Framework Eclipse Plugin webpage instead:
+\url{http://types.cs.washington.edu/checker-framework/eclipse/}.)
+
 The Checker Framework release contains everything that you need, both to
 run checkers and to write your own checkers.  As an alternative, you can
 build the latest development version from source
@@ -192,7 +197,7 @@ build the latest development version from source
 You must have \textbf{JDK 7} or later installed.  You can get JDK 7 from
 \href{http://www.oracle.com/technetwork/java/javase/downloads/index.html}{Oracle}
 or elsewhere.  If you are using Apple Mac OS X, you can use
-\href{http://developer.apple.com/search/index.php?q=java}{Apple's implementation},
+\href{https://developer.apple.com/search/index.php?q=java}{Apple's implementation},
 \href{http://landonf.bikemonkey.org/static/soylatte/}{SoyLatte},
 or the \href{http://openjdk.java.net/}{OpenJDK}.
 
@@ -206,11 +211,11 @@ optional step.
   %END LATEX
   \url{http://types.cs.washington.edu/checker-framework/current/checker-framework.zip}
 
-\item 
+\item
   Unzip it to create a \code{checker-framework} directory.
 
 \item
-  \label{installation-configure-step}
+  \label{installation-configure-step}%
   Configure your IDE, build system, or command shell to use the Checker
   Framework compiler.  Choose the appropriate section of
   Chapter~\ref{external-tools} for
@@ -243,35 +248,35 @@ instructions for using a checker appear in Chapter~\ref{using-a-checker}.
 
 \section{Example use:  detecting a null pointer bug\label{example-use}}
 
-This section gives a very simple example of running the Checker Framework
-from the command line.  There is also a \ahreforurl{http://types.cs.washington.edu/checker-framework/tutorial/}{tutorial}
+This section gives a very simple example of running the Checker Framework.
+There is also a \ahreforurl{http://types.cs.washington.edu/checker-framework/tutorial/}{tutorial}
 that gives more extensive instructions for using the Checker Framework in
 Eclipse or on the command line.
 
-
-To run a checker on a source file, just compile as usual, but pass the
-\<-processor> flag to the compiler.
-
-For instance, if you usually run the javac compiler like
-this:
-
-\begin{Verbatim}
-  javac Foo.java Bar.java
-\end{Verbatim}
-
-\noindent
-then you will instead use the command line:
-
-\begin{alltt}
-  javac \textbf{-processor \textit{ProcessorName}} Foo.java Bar.java
-\end{alltt}
-
-\noindent
-but take note that the \code{javac} command must refer to the
-Checker Framework compiler (see Section~\ref{javac-installation}).
-
-If you usually do your coding within an IDE, you will need to configure
-the IDE; see Chapter~\ref{external-tools}.
+% To run a checker on a source file, just compile as usual, but pass the
+% \<-processor> flag to the compiler.
+%
+% For instance, if you usually run the javac compiler like
+% this:
+%
+% \begin{Verbatim}
+%   javac Foo.java Bar.java
+% \end{Verbatim}
+%
+% \noindent
+% then you will instead a command line such as:
+%
+% \begin{alltt}
+%   javac \textbf{-processor NullnessChecker} Foo.java Bar.java
+%   javac \textbf{-processor RegexChecker} Foo.java Bar.java
+% \end{alltt}
+%
+% \noindent
+% but take note that the \code{javac} command must refer to the
+% Checker Framework compiler (see Section~\ref{javac-installation}).
+%
+% If you usually do your coding within an IDE, you will need to configure
+% the IDE; see Chapter~\ref{external-tools}.
 
 
 \begin{enumerate}
@@ -292,15 +297,25 @@ public class GetStarted {
 
 \item
   Run the Nullness Checker on the class.
-  Either run this command:
+  You can do that from the command line or from an IDE:
+
+\begin{enumerate}
+\item
+  From the command line, run this command:
+
 \begin{Verbatim}
   javac -processor org.checkerframework.checker.nullness.NullnessChecker GetStarted.java
 \end{Verbatim}
 
 \noindent
-or compile from within your IDE, which you have customized (see
-Chapter~\ref{external-tools}) to use the
-Checker Framework compiler and to pass the extra arguments.
+where the \code{javac} command refers to the
+Checker Framework compiler (see Section~\ref{javac-installation}).
+
+\item
+  To compile within your IDE, you must have customized it to use the
+  Checker Framework compiler and to pass the extra arguments (see
+  Chapter~\ref{external-tools}).
+\end{enumerate}
 
   The compilation should complete without any errors.
 
@@ -341,7 +356,7 @@ The Checker Framework distribution contains the following notable
 directories and files:
 
 \begin{itemize}
-\item \<changelog-checkerframework.txt> The changelog.
+\item \<changelog.txt> The changelog.
 \item \<checker/bin/javac> A replacement for the \<javac> compiler that
   enables use of the Checker Framework.
 \item \<checker/manual/> A local copy of this manual in PDF and HTML formats.
@@ -411,7 +426,7 @@ Additional topics that apply to all checkers are covered later in the manual:
 \end{itemize}
 
 
-Finally, there is a 
+Finally, there is a
 \ahreforurl{http://types.cs.washington.edu/checker-framework/tutorial/}{tutorial}
 that walks you through using the Checker Framework in Eclipse or on the
 command line.
@@ -424,8 +439,8 @@ command line.
 \section{Writing annotations\label{writing-annotations}}
 
 The syntax of type annotations in Java is specified by
-The Java 8 version of the Java Language Specification.
-% \href{http://types.cs.washington.edu/jsr308/}{JSR 308}~\cite{JSR308-2008-09-12}.  
+the Java Language Specification (Java SE 8 edition).
+% \href{http://types.cs.washington.edu/jsr308/}{JSR 308}~\cite{JSR308-2008-09-12}.
 Java 5 permitted annotations on declarations.  Java 8 also permits annotations
 anywhere that you would write a type, including generics and casts.  You
 can also write annotations to indicate type qualifiers for array levels and
@@ -525,6 +540,11 @@ A concrete example (using the Nullness Checker) is:
 \end{smaller}
 %END LATEX
 
+Since the \code{-processor} expects a fully-qualified class name,
+its argument can often be verbose.  There is shorthand for invoking
+checkers that are built into the Checker Framework.
+See Section~\ref{shorthand-for-checkers}.
+
 The checker is run on only the Java files that javac compiles.
 This includes all Java files specified on the command line (or
 created by another annotation processor).  It may also include other of
@@ -535,13 +555,13 @@ the \emph{uses} of those classes in the source code being compiled.
 
 You can always compile the code without the \code{-processor}
 command-line option, but in that case no checking of the type
-annotations is performed.  The annotations are still written to the
-resulting \<.class> files, however.
+annotations is performed.  Furthermore, only explicitly-written annotations
+are written to the \<.class> file; defaulted annotations are not, and this
+will interfere with type-checking of clients that use your code.
+Therefore, it is strongly recommended that whenever you are creating
+\<.class> files that will be distributed or compiled against, you run the
+type-checkers for all the annotations that your have written.
 
-Since the \code{-processor} expects a fully-qualified class name,
-its argument can often be verbose.  There is shorthand for invoking
-checkers that are built into the Checker Framework.
-See Section~\ref{shorthand-for-checkers}.
 
 \subsection{Summary of command-line options\label{checker-options}}
 
@@ -551,7 +571,7 @@ checkers support the following command-line options.
 
 Unsound checking: ignore some errors
 \begin{itemize}
-\item \<-AskipUses>, \<-AonlyUses> 
+\item \<-AskipUses>, \<-AonlyUses>
   Suppress all errors and warnings at all uses of a given class --- or at all
   uses except those of a given class.  See Section~\ref{askipuses}
 \item \<-AskipDefs>, \<-AonlyDefs>
@@ -570,6 +590,19 @@ Unsound checking: ignore some errors
   Section~\ref{type-refinement-purity}.
 \item \<-AassumeAssertionsAreEnabled>, \<-AassumeAssertionsAreDisabled>
   Whether to assume that assertions are enabled or disabled; see Section~\ref{type-refinement-assertions}.
+\item \<-AsafeDefaultsForUnannotatedBytecode>
+  Whether unannotated bytecode should use conservative defaults; see
+  Section~\ref{defaults-classfile}.
+% \item \<-AunsafeDefaultsForUnannotatedBytecode>
+%   Whether unannotated bytecode should use the same defaults as source
+%   code (unsound, but might reduce annotation effort); see
+%   Section~\ref{defaults-classfile}.
+% This item is repeated below:
+\item \<-AuseSafeDefaultsForUnannotatedSourceCode>
+  Outside the scope of any relevant
+  \refqualclass{framework/qual}{AnnotatedFor} annotation, use conservative
+  default annotations and suppress all type-checking warnings; see
+  Section~\ref{compiling-libraries}.
 \end{itemize}
 
 \label{unsound-by-default}
@@ -617,12 +650,21 @@ Type-checking modes:  enable/disable functionality
   \<javac> prints at most 100 warnings.
 \end{itemize}
 
-Stub libraries
+Partially-annotated libraries
 \begin{itemize}
+% \item \<-AprintUnannotatedMethods>
+%   List library methods that need to be annotated; see
+%   Section~\ref{annotating-libraries}.
 \item \<-Astubs>
   List of stub files or directories; see Section~\ref{stub-using}.
 \item \<-AstubWarnIfNotFound>
   Warn if a stub file entry could not be found; see Section~\ref{stub-using}.
+% This item is repeated above:
+\item \<-AuseSafeDefaultsForUnannotatedSourceCode>
+  Outside the scope of any relevant
+  \refqualclass{framework/qual}{AnnotatedFor} annotation, use conservative
+  default annotations and suppress all type-checking warnings; see
+  Section~\ref{compiling-libraries}.
 \end{itemize}
 
 Debugging
@@ -682,8 +724,9 @@ checker is a type of ``annotation processor''.
   means to skip checking; \<-proc:only> means to do only
   checking, without any subsequent compilation; see
   Section~\ref{checker-auto-discovery}
-\item \<-Xbootclasspath/p:> Indicates where to find the annotated JDK classes;
-  see Section~\ref{skeleton-using}
+%% Users shouldn't need to use this
+% \item \<-Xbootclasspath/p:> Indicates where to find the annotated JDK classes;
+%   see Section~\ref{skeleton-using}
 \item \<-implicit:class> Suppresses warnings about implicitly compiled files
   (not named on the command line); see Section~\ref{ant-task}
 \item \<-XDTA:noannotationsincomments> and \<-XDTA:spacesincomments>
@@ -692,6 +735,9 @@ checker is a type of ``annotation processor''.
   contain spaces; applicable only to the Checker Framework compiler;
   see Section~\ref{annotations-in-comments}
 \item \<-J> Supply an argument to the JVM that is running javac
+\item \<-doe> To ``dump on error'', that is, output a stack trace
+  whenever a compiler warning/error is produced. Useful when debugging
+  the compiler or a checker.
 \end{itemize}
 
 
@@ -734,14 +780,19 @@ annotation processing including all pluggable type-checking.
 %%     unannotated code, and that would be irritating.
 
 \subsection{Shorthand for built-in checkers \label{shorthand-for-checkers}}
+
+% TODO: this feature only works for our javac script, not when using
+% the standard javac. Should this be explained?
+
 The \code{-processor} flag expects fully-qualified class names.
 For checkers that are packaged with the Checker Framework, the fully-qualified
-name can be quite long.  Therefore, when running a built-in checker, you may 
-omit the package name.  The following two commands are equivalent: 
+name can be quite long.  Therefore, when running a built-in checker, you may
+omit the package name and the \<Checker> suffix.  The following three commands are equivalent:
 
 \begin{alltt}
   javac -processor \textbf{org.checkerframework.checker.nullness.NullnessChecker} MyFile.java
   javac -processor \textbf{NullnessChecker} MyFile.java
+  javac -processor \textbf{nullness} MyFile.java
 \end{alltt}
 
 This feature will work when multiple checkers are specified.
@@ -749,6 +800,7 @@ For example:
 
 \begin{alltt}
   javac -processor NullnessChecker,RegexChecker MyFile.java
+  javac -processor nullness,regex MyFile.java
 \end{alltt}
 
 This feature does not apply to Javac \href{https://docs.oracle.com/javase/7/docs/technotes/tools/windows/javac.html#commandlineargfile}{@argfiles}.
@@ -801,9 +853,7 @@ There are some limitations to the guarantee.
 \item
   The Checker Framework is, by default, unsound in a few places where a
   conservative analysis would issue too many false positive warnings.
-  These are listed in Section~\ref{unsound-by-default}; as of January 2014,
-  they are: (1) purity annotations are trusted, (2) array types are
-  covariant, and (3) programs are assumed to be single-threaded.
+  These are listed in Section~\ref{unsound-by-default}.
   You can supply a command-line argument to make the Checker Framework
   sound for each of these cases.
 
@@ -863,23 +913,18 @@ Annotating an entire existing program may seem like a daunting task.  But,
 if you approach it systematically and do a little bit at a time, you will
 find that it is manageable.
 
-You should start with a property that matters to you, to achieve the best
-benefits.  It is easiest to add annotations if you know the code or the
+Start small, focusing on some specific property that matters to you and
+on the most mission-critical or error-prone part of your code.
+It is easiest to add annotations if you know the code or the
 code contains documentation; you will find that you spend most of your time
 understanding the code, and very little time actually writing annotations
 or running the checker.
 
-Don't get discouraged if you see many type-checker warnings at first.
-Often, adding just a few missing annotations will eliminate many warnings,
-and you'll be surprised how fast the process goes overall.
-
-It is best to annotate one package at a time,
-% Upcoming fix that applies different defaults to annotated and unannotated
-% code will eliminate this reason.
-and to annotate the entire package so that you don't forget any classes
-(failing to annotate a class can lead to unexpected results).
-Start as close to the leaves of the call tree as possible, such as with
-libraries --- that is,
+Start by annotating just part of your program.  Be systematic, such as
+annotating an entire class at a time (not just some of the methods)
+so that you don't lose track of your work.
+You may find it helpful to start annotating the leaves of the call tree ---
+that is,
 start with methods/classes/packages that have few dependencies on other
 code or, equivalently, start with code that a lot of your other code
 depends on.  The reason for this is that it is
@@ -889,23 +934,23 @@ annotated.
 For each class, read its Javadoc.  For instance, if you are adding
 annotations for the Nullness Checker (Section~\ref{nullness-checker}), then
 you can search the documentation for ``null'' and then add \<@Nullable>
-anywhere appropriate.  Do not annotate the method bodies yet ---
-first, get the signatures and fields annotated.  The only reason to even
+anywhere appropriate.  Then annotate signatures and fields; there is no
+need to annotate method bodies.  The only reason to even
 \emph{read} the method bodies yet is to determine signature annotations for
 undocumented methods ---
 for example, if the method returns null, you know its return type should be
 annotated \<@Nullable>, and a parameter that is compared against \<null>
-may need to be annotated \<@Nullable>.  If you are only annotating
-signatures (say, for a library you do not maintain and do not wish to
-check), you are now done.
+may need to be annotated \<@Nullable>.
 
-If you wish to check the implementation, then after the signatures are
-annotated, run the checker.  Then, add method body annotations (usually,
-few are necessary), fix bugs in code, and add annotations to signatures
-where necessary.  If signature annotations are necessary, then you may want
-to fix the documentation that did not indicate the property; but this isn't
-strictly necessary, since the annotations that you wrote provide that
-documentation.
+After you have annotated all the signatures, run the checker.
+Then, fix bugs in code and add/modify annotations as necessary.
+% If signature annotations are necessary, then you may want
+% to fix the documentation that did not indicate the property; but this isn't
+% strictly necessary, since the annotations that you wrote provide that
+% documentation.
+Don't get discouraged if you see many type-checker warnings at first.
+Often, adding just a few missing annotations will eliminate many warnings,
+and you'll be surprised how fast the process goes overall.
 
 You may wonder about the effect of adding a given annotation --- how many
 other annotations it will require, or whether it conflicts with other code.
@@ -916,8 +961,9 @@ output after adding the annotation.  This helps you to focus on the
 specific consequences of your change.
 
 Also see Chapter~\ref{suppressing-warnings}, which tells you what to do when
-you are unable to eliminate checker warnings.
-
+you are unable to eliminate checker warnings, and
+Chapter~\ref{annotating-libraries}, which tells you how to annotate
+libraries that your code uses.
 
 
 \subsection{Do not annotate local variables unless necessary\label{tips-local-inference}}
@@ -969,17 +1015,16 @@ annotation, the checker is able to issue compile-time warnings about
 possible run-time exceptions, which is its purpose.  Marking the parameter
 as \code{@Nullable} would suppress such warnings, which is undesirable.
 
-This paragraph explains additional subtlety regarding unchecked library
-annotations.  You should ignore paragraph the first time you read this manual.
-Library annotations are generally trusted rather than not checked.
-Therefore, it is often a good idea to write conservative library annotations
-that guarantee lack of exceptions.  For example, you could write
-\<@Nullable> on a method parameter to mean the method never throws an
-exception due to the argument being null.  If a method is allowed to take
-\<null> in some circumstances but not in others, then if you annotate it as
-\<@NonNull>, you will be guaranteed to get a warning for every client use
-that has the potential to cause an exception.
-
+% This is only an issue for code with unchecked, trusted annotations such as
+% library methods; if the method is type-checked, then the type-checker
+% warnings will lead you to leave the formal parameter as the default, which
+% means \<@NonNull>.
+If a method can possibly throw exception because its parameter
+is \<null>, then that parameter's type should be \<@NonNull>, which
+guarantees that the type-checker will issue a warning for every client
+use that has the potential to cause an exception.  Don't write
+\<@Nullable> on the parameter just because there exist some executions that
+don't necessarily throw an exception.
 
 % (The note at
 % http://google-collections.googlecode.com/svn/trunk/javadoc/com/google/common/base/Preconditions.html
@@ -1118,7 +1163,7 @@ Fix your code to prevent that crash.
 There is a weakness in the annotations.  Improve the annotations.
 For example, continuing the Nullness Checker example, if a particular
 variable is annotated as \refqualclass{checker/nullness/qual}{Nullable} but it
-actually never contains \<null> at run time, then change the annotation to 
+actually never contains \<null> at run time, then change the annotation to
 \refqualclass{checker/nullness/qual}{NonNull}.  The weakness might be in the
 annotations in your code, or in the annotations in a library that your code
 calls.  Another possible problem is that a library is unannotated (see
@@ -1166,4 +1211,6 @@ Also see Chapter~\ref{troubleshooting}, Troubleshooting.
 %  LocalWords:  AprintAllQualifiers Aignorejdkastub AstubDebug Aflowdotdir
 %  LocalWords:  AresourceStats noannotationsincomments jls r78 JDKs i18n
 %  LocalWords:  AinvariantArrays AcheckCastElementType formatter pathname
-%  LocalWords:  typedef
+%  LocalWords:  typedef guieffect Gradle jdk7 jdk8 javadoc MyFile argfiles
+%%  LocalWords:  AshowSuppressWarningKeys AoutputArgsToFile RegexChecker
+%%  LocalWords:  NullnessChecker commandlineargfile

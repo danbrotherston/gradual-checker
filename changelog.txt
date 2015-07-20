@@ -1,9 +1,80 @@
-Version 1.8.12, 31 March 2015
+Version 1.9.4, 1 August 2015
+
+Documented the notion of a compound checker, which depends on other checkers
+  and automatically runs them.
+
+Renamed -AuseConservativeDefaultsForUnannotatedSourceCode command-line
+  option to -AuseSafeDefaultsForUnannotatedSourceCode
+
+Fixed issues:  429.
+
+----------------------------------------------------------------------
+
+Version 1.9.3, 1 July 2015
+
+New command-line options:
+ * -AsafeDefaultsForUnannotatedBytecode causes a checker to use conservative
+   defaults for .class files that were compiled without running the given
+   checker.  Without this option, type-checking is unsound (that is, there
+   might be errors at run time even though the checker issues no warnings).
+ * -AuseConservativeDefaultsForUnannotatedSourceCode uses conservative
+   annotations for unannotated type uses.  Use this when compiling a library in
+   which some but not all classes are annotated.
+
+Various bug fixes and documentation improvements.
+
+Fixed issues: 436.
+
+----------------------------------------------------------------------
+
+Version 1.9.2, 1 June 2015
+
+Internationalization Format String Checker:
+This new type-checker prevents use of incorrect internationalization
+format strings.
+
+Fixed issues: 434.
+
+----------------------------------------------------------------------
+
+Version 1.9.1, 1 May 2015
+
+New FAQ entry:
+  "How does the Checker Framework compare with Eclipse's null analysis?"
+
+----------------------------------------------------------------------
+
+Version 1.9.0, 17 April 2015
+
+Bug fixes for generics, especially type parameters:
+   * Manual chapter 21 "Generics and polymorphism" has been expanded,
+     and it gives more information on annotating type parameters.
+   * The qualifier on a type parameter (e.g. <@HERE T> ) only applies
+     to the lower bound of that type parameter.  Previously it also
+     applied to the upper bound.
+   * Unannotated, unbounded wildcards are now qualified with the
+     annotations of the type parameter to which they are an argument.
+     See the new manual section 23.3.4 for more details.
+   * Warning "bound.type.incompatible" is issued if the lower bound of
+     a type parameter or wildcard is a supertype of its upper bound,
+     e.g.  <@Nullable T extends @NonNull Object>
+   * Method type argument inference has been improved. Fewer warnings
+     should be issued when method invocations omit type arguments.
+   * Added command-line option -AprintVerboseGenerics to print more
+     information about type parameters and wildcards when they appear
+     in warning messages.
 
 Reflection resolution:
 If you supply the -AresolveReflection command-line option, the Checker
-Framework attempts to resolve reflection.  This will reduce the number of false
-positive warnings caused by reflection.
+Framework attempts to resolve reflection.  This reduces the number of
+false positive warnings caused by reflection.
+
+The documentation for the Map Key Checker has been moved into its own
+chapter in the manual.
+
+Fixed issues: 221, 241, 313, 314, 328, 335, 337, 338, 339, 355, 369,
+              376, 378, 386, 388, 389, 393, 403, 404, 413, 414, 415,
+              417, 418, 420, 421, 422, 426.
 
 ----------------------------------------------------------------------
 
@@ -34,10 +105,10 @@ Implicit imports are deprecated, including the jsr308_imports environment
 variable and the -jsr308_imports ... and -Djsr308.imports=... command-line
 options.
 
-For checkers bundled with the Checker Framework, package names may now 
+For checkers bundled with the Checker Framework, package names may now
 be omitted when running from the command line.
 E.g.
-    javac -processor NullnessChecker MyFile.java 
+    javac -processor NullnessChecker MyFile.java
 
 The Nullness checker supports Android annotations
 android.support.annotation.NonNull and android.support.annotation.Nullable.
@@ -73,9 +144,9 @@ Dataflow:
    boxed Booleans, finally blocks, switch statements, type casts, enhanced
    for loops
  * Performance improvements
-	      
+
 Annotations:
-The checker-compat-qual.jar is now included with the Checker Framework 
+The checker-compat-qual.jar is now included with the Checker Framework
 release.  It can also be found in Maven Central at the coordinates:
 org.checkerframework:checker-compat-qual
 Annotations in checker-compat-qual.jar do not require Java 8 but
@@ -193,11 +264,11 @@ Changed the Java package of all type-checkers and qualifiers.  The package
 "checkers" has been renamed to "org.checkerframeork.checker".  This
 requires you to change your import statements, such as from
   import checkers.nullness.quals.*;
-to 
+to
   import org.checkerframework.checker.nullness.qual.*;
 It also requires you to change command-line invocations of javac, such as from
   javac -processor checkers.nullness.NullnessChecker ...
-to 
+to
   javac -processor org.checkerframework.checker.nullness.NullnessChecker ...
 
 Restructured the Checker Framework project and package layout,
@@ -235,7 +306,7 @@ Manual:
    Improved discussion of checker guarantees.
 
 Maven Plugin:
-   Added option useJavacOutput to display exact compiler output. 
+   Added option useJavacOutput to display exact compiler output.
 
 Eclipse Plugin:
    Added the Format String Checker to the list of built-in checkers.
@@ -325,7 +396,7 @@ New command-line options:
   -AconcurrentSemantics Whether to assume concurrent semantics
   -Anocheckjdk Don't err if no annotated JDK can be found
   -Aflowdotdir Create an image of the control flow graph
-  -AinvariantArrays replaces -Alint=arrays:invariant 
+  -AinvariantArrays replaces -Alint=arrays:invariant
   -AcheckCastElementType replaces -Alint=cast:strict
 
 Manual:
@@ -351,7 +422,7 @@ Bug fixes:
 Version 1.6.6, 01 August 2013
 
 Documentation:
-  The Checker Framework manual has been improved.  Changes include: 
+  The Checker Framework manual has been improved.  Changes include:
 more troubleshooting tips to the Checker Framework manual, an improved discussion on qualifier bounds, more examples, improved formatting, and more.
   An FAQ entry has been added to discuss JSR305.
   Minor clarifications have been added to the Checker Framework tutorial.
@@ -395,7 +466,7 @@ Version 1.6.3, 01 May 2013
 Eclipse plugin bug fixes:
   The javac argument files used by the Eclipse plugin now properly escape file paths.  Windows users should no longer encounter errors about missing built-in checkers.
 
-Documentation: 
+Documentation:
   Add FAQ "What is the meaning of an annotation after a type?"
 
 ----------------------------------------------------------------------
@@ -430,15 +501,15 @@ Maven plugin:
   Added option to compile code in order to support checking for multi-module projects.
   The plugin no longer copies the various Checker Framework maven artifacts to one location but instead takes advantage of the new custom path options for javac.jar and jdk7.jar.
   The maven plugin no longer attempts to resolve jdk6.jar
-  
+
 Eclipse plugin:
   Put Checker Framework jars at the beginning of classpath.
   All files selected from a single project can now be checked.  The previous behavior only checked the entire project or one file depending on the type of the first file selected.
-  
+
 Documentation:
   Fixed broken links and incomplete URLs in the Checker Framework Manual.
   Update FAQ to discuss that some other tools incorrectly interpret array declarations.
-  
+
 Bug fixes
 
 ----------------------------------------------------------------------
@@ -498,7 +569,7 @@ Tool Integration Changes
     naming conventions.
   Eclipse and Maven plugin version numbers will now
     track the Checker Framework version numbers.
-  
+
 Bug fixes.
 
 ----------------------------------------------------------------------
@@ -1120,7 +1191,7 @@ Bug Fixes
 
 Manual
   Clarified FAQ item regarding why List's type parameter is
-    "extends @NonNull Object"  
+    "extends @NonNull Object"
 
 ----------------------------------------------------------------------
 Version 1.0.3, 5 Dec 2009

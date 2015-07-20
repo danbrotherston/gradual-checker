@@ -1,5 +1,8 @@
 package org.checkerframework.framework.stub;
 
+import org.checkerframework.javacutil.ElementUtils;
+import org.checkerframework.javacutil.TypesUtils;
+
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -17,9 +20,6 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.util.ElementFilter;
 
-import org.checkerframework.javacutil.ElementUtils;
-import org.checkerframework.javacutil.TypesUtils;
-
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.util.Context;
 
@@ -28,9 +28,7 @@ import com.sun.tools.javac.util.Context;
  *
  * A stub file can be used to add annotations to methods of classes, that
  * are only available in binary or the source of which cannot be edited.
- * For details, see the <a
- * href="http://types.cs.washington.edu/checker-framework/current/checker-framework-manual.html#stub-creating-and-using">Checker
- * Framework Manual</a>.
+ * @checker_framework.manual #stub-creating-and-using Using stub classes
  */
 public class StubGenerator {
     /** The indentation for the class */
@@ -73,7 +71,7 @@ public class StubGenerator {
     public StubGenerator(OutputStream out) {
         this.out = new PrintStream(out);
     }
-    
+
     /**
      * Generate the skeleton file for all the classes within the provided
      * package.
@@ -120,7 +118,7 @@ public class StubGenerator {
      * package.
      */
     public void skeletonFromMethod(Element elt) {
-        if(!(elt.getKind() == ElementKind.CONSTRUCTOR || elt.getKind() == ElementKind.METHOD) )
+        if (!(elt.getKind() == ElementKind.CONSTRUCTOR || elt.getKind() == ElementKind.METHOD))
             return;
 
         String newPackage = ElementUtils.getVerboseName(ElementUtils
@@ -178,8 +176,6 @@ public class StubGenerator {
 
     /**
      * helper method that outputs the index for the provided class.
-     *
-     * @param typeElement
      */
     private void printClass(TypeElement typeElement) {
         printClass(typeElement, null);
@@ -187,8 +183,6 @@ public class StubGenerator {
 
     /**
      * helper method that outputs the index for the provided class.
-     *
-     * @param typeElement
      */
     private void printClass(TypeElement typeElement, String outerClass) {
         List<TypeElement> innerClass = new ArrayList<TypeElement>();
@@ -202,7 +196,7 @@ public class StubGenerator {
             return;
 
         out.print(' ');
-        if(outerClass != null){
+        if (outerClass != null) {
             out.print(outerClass + "$");
         }
         out.print(typeElement.getSimpleName());
@@ -239,7 +233,7 @@ public class StubGenerator {
         indent();
         out.println("}");
 
-        for(TypeElement element: innerClass){
+        for (TypeElement element: innerClass) {
             printClass(element,typeElement.getSimpleName().toString());
         }
 
@@ -250,7 +244,6 @@ public class StubGenerator {
      * a class.
      *
      * @param members list of the class members
-     * @param innerClass
      */
     private void printTypeMembers(List<? extends Element> members, List<TypeElement> innerClass) {
         for (Element element : members) {
@@ -261,7 +254,6 @@ public class StubGenerator {
 
     /**
      * Helper method that outputs the declaration of the member
-     * @param innerClass
      */
     private void printMember(Element member, List<TypeElement> innerClass) {
         if (member.getKind().isField())

@@ -177,7 +177,8 @@ public class ElementUtils {
      */
     public static String getVerboseName(Element elt) {
         if (elt.getKind() == ElementKind.PACKAGE ||
-                elt.getKind().isClass()) {
+                elt.getKind().isClass() ||
+                elt.getKind().isInterface()) {
             return getQualifiedClassName(elt).toString();
         } else {
             return getQualifiedClassName(elt) + "." + elt.toString();
@@ -207,13 +208,13 @@ public class ElementUtils {
      * Returns true if the element is declared in ByteCode.
      * Always return false if elt is a package.
      */
-    public static boolean isElementFromByteCode(Element elt){
+    public static boolean isElementFromByteCode(Element elt) {
         if (elt == null)
             return false;
 
-        if (elt instanceof Symbol.ClassSymbol){
+        if (elt instanceof Symbol.ClassSymbol) {
             Symbol.ClassSymbol clss = (Symbol.ClassSymbol) elt;
-            if (null != clss.classfile){
+            if (null != clss.classfile) {
                 //The class file could be a .java file
                 return clss.classfile.getName().endsWith(".class");
             } else {
@@ -227,12 +228,12 @@ public class ElementUtils {
      * Returns true if the element is declared in ByteCode.
      * Always return false if elt is a package.
      */
-    private static boolean isElementFromByteCode(Element elt, Element orig){
+    private static boolean isElementFromByteCode(Element elt, Element orig) {
         if (elt == null)
             return false;
-        if (elt instanceof Symbol.ClassSymbol){
+        if (elt instanceof Symbol.ClassSymbol) {
             Symbol.ClassSymbol clss = (Symbol.ClassSymbol) elt;
-            if (null != clss.classfile){
+            if (null != clss.classfile) {
                 // The class file could be a .java file
                 return (clss.classfile.getName().endsWith(".class") ||
                         clss.classfile.getName().endsWith(".class)") ||
@@ -278,9 +279,9 @@ public class ElementUtils {
      * @return whether the element requires a receiver for accesses.
      */
     public static boolean hasReceiver(Element element) {
-        return element.getKind() != ElementKind.LOCAL_VARIABLE
-                && element.getKind() != ElementKind.PARAMETER
-                && element.getKind() != ElementKind.PACKAGE
+        return (element.getKind().isField() ||
+                element.getKind() == ElementKind.METHOD ||
+                element.getKind() == ElementKind.CONSTRUCTOR)
                 && !ElementUtils.isStatic(element);
     }
 

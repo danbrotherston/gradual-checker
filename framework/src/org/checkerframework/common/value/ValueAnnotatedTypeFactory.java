@@ -311,10 +311,7 @@ public class ValueAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
          * and a2 are not the same type of Value annotation they may still be
          * mergeable because some values can be implicitly cast as others. If a1
          * and a2 are both in {DoubleVal, IntVal} then they will be converted
-         * upwards: IntVal -> DoubleVal to arrive at a common annotation type.
-         *
-         * @param a1
-         * @param a2
+         * upwards: IntVal &rarr; DoubleVal to arrive at a common annotation type.
          *
          * @return the least upper bound of a1 and a2
          */
@@ -383,9 +380,6 @@ public class ValueAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
          * Computes subtyping as per the subtyping in the qualifier hierarchy
          * structure unless both annotations are Value. In this case, rhs is a
          * subtype of lhs iff lhs contains at least every element of rhs
-         *
-         * @param rhs
-         * @param lhs
          *
          * @return true if rhs is a subtype of lhs, false otherwise
          */
@@ -543,7 +537,7 @@ public class ValueAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
                     } else {
                         currentLengths = (new ArrayList<Integer>());
                     }
-                    if(count == summarylengths.size()){
+                    if (count == summarylengths.size()) {
                         summarylengths.add(new ArrayList<Integer>());
                     }
                     summarylengths.get(count).addAll(currentLengths);
@@ -624,7 +618,7 @@ public class ValueAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
         private List<?> getValues(AnnotatedTypeMirror type, TypeMirror castTo) {
             AnnotationMirror anno = type.getAnnotationInHierarchy(UNKNOWNVAL);
-            if(anno == null){
+            if (anno == null) {
                 // if type is an AnnotatedTypeVariable (or other type without a primary annotation)
                 // then anno will be null. It would be safe to use the annotation on the upper bound;
                 //  however, unless the upper bound was explicitly annotated, it will be unknown.
@@ -638,7 +632,7 @@ public class ValueAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
         @Override
         public Void visitLiteral(LiteralTree tree, AnnotatedTypeMirror type) {
             if (isUnderlyingTypeAValue(type)) {
-                switch(tree.getKind()){
+                switch (tree.getKind()) {
                 case BOOLEAN_LITERAL:
                     AnnotationMirror boolAnno = createBooleanAnnotation(Collections
                             .singletonList((Boolean) tree.getValue()));
@@ -985,7 +979,7 @@ public class ValueAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
             return UNKNOWNVAL;
         }
         List<Long> longValues = new ArrayList<>();
-        for(char value: values){
+        for (char value: values) {
             longValues.add((long) value);
         }
         AnnotationBuilder builder = new AnnotationBuilder(processingEnv,

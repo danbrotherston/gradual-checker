@@ -7,9 +7,11 @@ import org.checkerframework.checker.nullness.qual.*;
 
 import org.checkerframework.common.basetype.BaseAnnotatedTypeFactory;
 import org.checkerframework.common.basetype.BaseTypeChecker;
+import org.checkerframework.framework.qual.AnnotatedFor;
 import org.checkerframework.framework.qual.TypeQualifiers;
 import org.checkerframework.framework.type.AnnotatedTypeFactory;
 import org.checkerframework.framework.util.CFContext;
+import org.checkerframework.framework.util.CheckerMain;
 import org.checkerframework.framework.util.OptionConfiguration;
 import org.checkerframework.javacutil.AbstractTypeProcessor;
 import org.checkerframework.javacutil.AnnotationProvider;
@@ -24,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -72,14 +75,13 @@ import com.sun.tools.javac.util.Log;
  *
  * <p>
  *
- * TODO update: Subclasses must implement the following methods:
+ * Subclasses must implement the following methods: (TODO: update the list)
  *
  * <ul>
- *  <li>{link SourceChecker#getMessages} (for type-qualifier specific error messages)
- *  <li>{link SourceChecker#createSourceVisitor(CompilationUnitTree)} (for a custom {@link SourceVisitor})
- *  <li>{link SourceChecker#createFactory} (for a custom {@link AnnotatedTypeFactory})
- *  <li>{link SourceChecker#getSuppressWarningsKeys} (for honoring
- *      {link SuppressWarnings} annotations)
+ *  <li>{@link SourceChecker#getMessages} (for type-qualifier specific error messages)
+ *  <li>{@link SourceChecker#createSourceVisitor} (for a custom {@link SourceVisitor})
+ *  <li>{@link SourceChecker#getSuppressWarningsKeys} (for honoring
+ *      {@literal @}{link SuppressWarnings} annotations)
  * </ul>
  *
  * Most type-checker plug-ins will want to extend {@link BaseTypeChecker},
@@ -174,10 +176,18 @@ import com.sun.tools.javac.util.Log;
     // org.checkerframework.framework.flow.CFAbstractTransfer.sequentialSemantics
     "concurrentSemantics",
 
-    // Whether to use conservative checks for untyped code, these are configured
-    // by the specific type checker using Default[For|Qualifier]InUntyped.
+    // Whether to use conservative checks for unannotated bytecode; these are configured
+    // by the specific type checker using @Default[Qualifier]ForUnannotatedCode.
     // They may require more annotations or stub files.
-    "conservativeUntyped",
+    // "unsafeDefaultsForUnannotatedBytecode",
+    // TODO: temporary option to turn on sound behavior.
+    "safeDefaultsForUnannotatedBytecode",
+
+    // Whether to use conservative checks for unannotated source code; these are configured
+    // by the specific type checker using @Default[Qualifier]ForUnannotatedCode
+    // and only apply to source code that is not marked as @AnnotatedFor the checker
+    // that is being executed.
+    "useSafeDefaultsForUnannotatedSourceCode",
 
     // Whether to resolve reflective method invocations
     // resolveReflection=debug cause debugging information
@@ -209,6 +219,13 @@ import com.sun.tools.javac.util.Log;
 
     // Print qualifier parameters using annotations instead of the <<Q>> format.
     "printQualifierParametersAsAnnotations",
+
+    // Whether to print [] around a set of type parameters in order to clearly see where they end
+    // e.g.  <E extends F, F extends Object>
+    // without this option the E is printed as:   E extends F extends Object
+    // with this option:                          E [ extends F [ extends Object super Void ] super Void ]
+    // when multiple type variables are used this becomes useful very quickly
+    "printVerboseGenerics",
 
     // Output detailed message in simple-to-parse format, useful
     // for tools parsing Checker Framework output.
@@ -364,6 +381,13 @@ public abstract class SourceChecker
     /** The line separator */
     private final static String LINE_SEPARATOR = System.getProperty("line.separator").intern();
 
+    // The checker that called this one, whether that be a BaseTypeChecker (used as a compound checker) or an AggregateChecker.
+    // Null if this is the checker that calls all others.
+    // Note that in the case of a compound checker, the compound checker is the parent, not the checker that was run prior to this one by the compound checker.
+    protected SourceChecker parentChecker = null;
+
+    protected List<String> upstreamCheckerNames = null; // Includes the current checker
+
     @Override
     public final void init(ProcessingEnvironment env) {
         super.init(env);
@@ -384,6 +408,25 @@ public abstract class SourceChecker
     /* This method is protected only to allow the AggregateChecker and BaseTypeChecker to call it. */
     protected void setProcessingEnvironment(ProcessingEnvironment env) {
         this.processingEnv = env;
+    }
+
+    protected void setParentChecker(SourceChecker parentChecker) {
+        this.parentChecker = parentChecker;
+    }
+
+    public List<String> getUpstreamCheckerNames() {
+        if (upstreamCheckerNames == null) {
+            upstreamCheckerNames = new ArrayList<String>();
+
+            SourceChecker checker = this;
+
+            while (checker != null) {
+                upstreamCheckerNames.add(checker.getClass().getName());
+                checker = checker.parentChecker;
+            }
+        }
+
+        return upstreamCheckerNames;
     }
 
     /** @return the {@link CFContext} used by this checker */
@@ -654,7 +697,7 @@ public abstract class SourceChecker
     }
 
     private void logCheckerError(CheckerError ce) {
-        if( ce.getMessage() == null ) {
+        if (ce.getMessage() == null) {
             final String stackTrace = formatStackTrace(ce.getStackTrace());
             ErrorReporter.errorAbort("Null error message while logging Checker error.\nStack Trace:\n" + stackTrace);
         }
@@ -1120,9 +1163,9 @@ public abstract class SourceChecker
      *
      * @param anno  the @SuppressWarnings annotation written by the user
      * @param err   the error key the checker is emitting
-     * @return true if one of {@code annos} is a {@link SuppressWarnings}
-     *         annotation with the key returned by {@link
-     *         SourceChecker#getSuppressWarningsKey}
+     * @return true if one of {@code annos} is a
+     *         {@literal @}{@link SuppressWarnings} annotation with a key
+     *         returned by {@link SourceChecker#getSuppressWarningsKeys}
      */
     private boolean checkSuppressWarnings(/*@Nullable*/ SuppressWarnings anno, String err) {
 
@@ -1171,7 +1214,7 @@ public abstract class SourceChecker
      * should be suppressed.  Returns true if the tree is within the scope
      * of a @SuppressWarnings annotation, one of whose values suppresses
      * the checker's warnings.  The list of keys that suppress a checker's
-     * wornings is provided by the {@link
+     * warnings is provided by the {@link
      * SourceChecker#getSuppressWarningsKey} method.
      *
      * @param tree the tree that might be a source of a warning
@@ -1195,12 +1238,31 @@ public abstract class SourceChecker
             return true;
 
         /*@Nullable*/ MethodTree method = TreeUtils.enclosingMethod(path);
-        if (method != null && shouldSuppressWarnings(InternalUtils.symbol(method), err))
-            return true;
+        if (method != null) {
+            /*@Nullable*/ Element elt = InternalUtils.symbol(method);
+
+            if (shouldSuppressWarnings(elt, err))
+                return true;
+
+            if (isAnnotatedForThisCheckerOrUpstreamChecker(elt))
+                return false; // Return false immediately. Do NOT check for AnnotatedFor in the enclosing elements, because they may not have an @AnnotatedFor.
+        }
 
         /*@Nullable*/ ClassTree cls = TreeUtils.enclosingClass(path);
-        if (cls != null && shouldSuppressWarnings(InternalUtils.symbol(cls), err))
+        if (cls != null) {
+            /*@Nullable*/ Element elt = InternalUtils.symbol(cls);
+
+            if (shouldSuppressWarnings(elt, err))
+                return true;
+
+            if (isAnnotatedForThisCheckerOrUpstreamChecker(elt))
+                return false; // Return false immediately. Do NOT check for AnnotatedFor in the enclosing elements, because they may not have an @AnnotatedFor.
+        }
+
+        if (hasOption("useSafeDefaultsForUnannotatedSourceCode")) {
+            // If we got this far without hitting an @AnnotatedFor and returning false, we DO suppress the warning.
             return true;
+        }
 
         return false;
     }
@@ -1210,8 +1272,35 @@ public abstract class SourceChecker
         if (elt == null)
             return false;
 
-        return checkSuppressWarnings(elt.getAnnotation(SuppressWarnings.class), err)
-                || shouldSuppressWarnings(elt.getEnclosingElement(), err);
+        if (checkSuppressWarnings(elt.getAnnotation(SuppressWarnings.class), err))
+            return true;
+
+        if (isAnnotatedForThisCheckerOrUpstreamChecker(elt))
+            return false; // Return false immediately. Do NOT check for AnnotatedFor in the enclosing elements, because they may not have an @AnnotatedFor.
+
+        return shouldSuppressWarnings(elt.getEnclosingElement(), err);
+    }
+
+    private boolean isAnnotatedForThisCheckerOrUpstreamChecker(/*@Nullable*/ Element elt) {
+
+        if (elt == null || !hasOption("useSafeDefaultsForUnannotatedSourceCode"))
+            return false;
+
+        /*@Nullable*/ AnnotatedFor anno = elt.getAnnotation(AnnotatedFor.class);
+
+        String[] userAnnotatedFors = (anno == null ? null : anno.value());
+
+        if (userAnnotatedFors != null) {
+            List<String> upstreamCheckerNames = getUpstreamCheckerNames();
+
+            for(String userAnnotatedFor : userAnnotatedFors) {
+                if (CheckerMain.matchesCheckerOrSubcheckerFromList(userAnnotatedFor, upstreamCheckerNames)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -1227,7 +1316,6 @@ public abstract class SourceChecker
     public void report(final Result r, final Object src) {
 
         String err = r.getMessageKeys().iterator().next();
-        // TODO: SuppressWarnings checking for Elements
         if (src instanceof Tree && shouldSuppressWarnings((Tree)src, err))
             return;
         if (src instanceof Element && shouldSuppressWarnings((Element)src, err))
@@ -1449,6 +1537,7 @@ public abstract class SourceChecker
      *
      * @see SourceChecker#getLintOption(String,boolean)
      */
+    @Override
     public final String getOption(String name) {
         return getOption(name, null);
     }
@@ -1457,6 +1546,7 @@ public abstract class SourceChecker
      * Return all active options for this checker.
      * @return all active options for this checker.
      */
+    @Override
     public Map<String, String> getOptions() {
         if (activeOptions == null) {
             activeOptions = createActiveOptions(processingEnv.getOptions());
@@ -1473,6 +1563,7 @@ public abstract class SourceChecker
      * @return True if the option name was provided, false otherwise.
      */
     // TODO I would like to rename getLintOption to hasLintOption
+    @Override
     public final boolean hasOption(String name) {
         return getOptions().containsKey(name);
     }
@@ -1484,6 +1575,7 @@ public abstract class SourceChecker
      * @see SourceChecker#getOption(String)
      * @see SourceChecker#getLintOption(String)
      */
+    @Override
     public final String getOption(String name, String def) {
 
         if (!this.getSupportedOptions().contains(name)) {
@@ -1562,10 +1654,14 @@ public abstract class SourceChecker
     }
 
     /**
-     * Always returns a singleton set containing only "*".
+     * Overrides the default implementation to always
+     * return a singleton set containing only "*".
+     * <p>
      *
-     * This method returns the argument to the {@link
-     * SupportedAnnotationTypes} annotation, so the effect of returning "*"
+     * javac uses this list to determine which classes process; javac only
+     * runs an annotation processor on classes that contain at least one of
+     * the mentioned annotations.
+     * Thus, the effect of returning "*"
      * is as if the checker were annotated by
      * {@code @SupportedAnnotationTypes("*")}:
      * javac runs the checker on every
@@ -1576,7 +1672,7 @@ public abstract class SourceChecker
      * To specify the annotations that a checker recognizes as type qualifiers,
      * use the {@link TypeQualifiers} annotation on the declaration of
      * subclasses of this class or override the
-     * {@link BaseAnnotatedTypeFactory#getSupportedTypeQualifiers()} method.
+     * {@link AnnotatedTypeFactory#createSupportedTypeQualifiers()} method.
      *
      * @throws Error if a subclass is annotated with
      *         {@link SupportedAnnotationTypes}

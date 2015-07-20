@@ -2,6 +2,15 @@ package org.checkerframework.framework.util;
 
 import org.checkerframework.javacutil.Pair;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
+
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
@@ -9,7 +18,6 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
-import java.util.*;
 
 
 /**
@@ -35,7 +43,7 @@ import java.util.*;
  *      Map(O1 -> [M1,M2])
  * }</pre>
  *
- * This utility only maps between corresponding type parameters, so the the following class:
+ * This utility only maps between corresponding type parameters, so the following class:
  * <pre>{@code
  *      class StringMap extends Map<String,String>
  * }</pre>
@@ -141,7 +149,7 @@ public class TypeArgumentMapper {
                 currentTypeParams.clear();
                 currentTypeParams.addAll(current.element.getTypeParameters());
 
-                for(int i = 0; i < nextTypeArgs.size(); i++) {
+                for (int i = 0; i < nextTypeArgs.size(); i++) {
                     final TypeParameterElement correspondingParameter = nextTypeParameter.get(i);
                     final TypeMirror typeArg = nextTypeArgs.get(i);
                     final Element typeArgEle = types.asElement(typeArg);
@@ -163,16 +171,10 @@ public class TypeArgumentMapper {
             }
 
         }
-        
+
         return result;
     }
 
-    /**
-     *
-     * @param elements
-     * @param map
-     * @return
-     */
     private static Set<TypeParameterElement> flattenPath(Set<TypeParameterElement> elements,
                                                          Map<TypeParameterElement, Set<TypeParameterElement>> map) {
 

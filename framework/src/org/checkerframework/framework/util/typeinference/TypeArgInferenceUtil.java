@@ -1,27 +1,32 @@
 package org.checkerframework.framework.util.typeinference;
 
+import com.sun.source.tree.LambdaExpressionTree;
 import org.checkerframework.framework.type.AnnotatedTypeFactory;
-import org.checkerframework.framework.type.GenericAnnotatedTypeFactory;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedExecutableType;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedPrimitiveType;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedTypeVariable;
-import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedWildcardType;
+import org.checkerframework.framework.type.GenericAnnotatedTypeFactory;
+import org.checkerframework.framework.type.QualifierHierarchy;
 import org.checkerframework.framework.type.TypeVariableSubstitutor;
 import org.checkerframework.framework.type.visitor.AnnotatedTypeScanner;
 import org.checkerframework.framework.util.AnnotatedTypes;
+import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.ErrorReporter;
 import org.checkerframework.javacutil.InternalUtils;
 import org.checkerframework.javacutil.TreeUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeVariable;
@@ -40,7 +45,6 @@ import com.sun.source.tree.Tree;
 import com.sun.source.tree.Tree.Kind;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
-import com.sun.tools.javac.code.Type;
 
 /**
  * Miscellaneous utilities to help in type argument inference.
@@ -105,35 +109,11 @@ public class TypeArgInferenceUtil {
         final List<AnnotatedTypeVariable> annotatedTypeVars = methodType.getTypeVariables();
         final Set<TypeVariable> targets = new LinkedHashSet<>(annotatedTypeVars.size());
 
-        for(final AnnotatedTypeVariable atv : annotatedTypeVars) {
+        for (final AnnotatedTypeVariable atv : annotatedTypeVars) {
             targets.add(atv.getUnderlyingType());
         }
 
         return targets;
-    }
-
-    /**
-     * Returns true if this type is super bounded or unbounded.
-     */
-    public static boolean isUnboundedOrSuperBounded(final AnnotatedWildcardType wildcardType) {
-        return ((Type.WildcardType) wildcardType.getUnderlyingType()).isSuperBound();
-    }
-
-    /**
-     * Returns true if wildcard type was explicitly unbounded.
-     */
-    public static boolean isExplicitlyExtendsBounded(final AnnotatedWildcardType wildcardType) {
-        return !isUnboundedOrSuperBounded(wildcardType);
-    }
-
-    /**
-     *
-     */
-    /**
-     * Returns true if this type is super bounded or unbounded.
-     */
-    public static boolean isUnboundedOrExtendsBounded(final AnnotatedWildcardType wildcardType) {
-        return ((Type.WildcardType) wildcardType.getUnderlyingType()).isExtendsBound();
     }
 
     /**
@@ -173,9 +153,6 @@ public class TypeArgInferenceUtil {
                 }
             }
 
-            assert treeIndex != -1 :  "Could not find path in method invocation."
-                                    + "treePath=" + path.toString() + "\n"
-                                    + "methodInvocation=" + methodInvocation;
             if (treeIndex == -1) {
                 return null;
             }
@@ -193,11 +170,16 @@ public class TypeArgInferenceUtil {
 
             return paramType;
         } else if (assignmentContext instanceof NewArrayTree) {
+            //TODO: I left the previous implementation below, it definitely caused infinite loops if you
+            //TODO: called it from places like the TreeAnnotator
+            return null;
+
             // FIXME: This may cause infinite loop
-            AnnotatedTypeMirror type =
-                    atypeFactory.getAnnotatedType((NewArrayTree)assignmentContext);
-            type = AnnotatedTypes.innerMostType(type);
-            return type;
+//            AnnotatedTypeMirror type =
+//                    atypeFactory.getAnnotatedType((NewArrayTree)assignmentContext);
+//            type = AnnotatedTypes.innerMostType(type);
+//            return type;
+
         } else if (assignmentContext instanceof NewClassTree) {
             // This need to be basically like MethodTree
             NewClassTree newClassTree = (NewClassTree) assignmentContext;
@@ -221,8 +203,17 @@ public class TypeArgInferenceUtil {
 
             return constructor.getParameterTypes().get(treeIndex);
         } else if (assignmentContext instanceof ReturnTree) {
-            MethodTree method = TreeUtils.enclosingMethod(path);
-            return (atypeFactory.getAnnotatedType(method)).getReturnType();
+            HashSet<Kind> kinds = new HashSet<>(Arrays.asList(Kind.LAMBDA_EXPRESSION, Kind.METHOD));
+            Tree enclosing = TreeUtils.enclosingOfKind(path, kinds);
+
+            if (enclosing.getKind() == Kind.METHOD) {
+                return (atypeFactory.getAnnotatedType((MethodTree) enclosing)).getReturnType();
+
+            } else {
+                return atypeFactory.getFnInterfaceFromTree((LambdaExpressionTree) enclosing).first;
+
+            }
+
         } else if (assignmentContext instanceof VariableTree) {
             if (atypeFactory instanceof GenericAnnotatedTypeFactory<?,?,?,?>) {
                 final GenericAnnotatedTypeFactory<?,?,?,?> gatf = ((GenericAnnotatedTypeFactory<?,?,?,?>) atypeFactory);
@@ -260,6 +251,21 @@ public class TypeArgInferenceUtil {
     }
 
     /**
+     * Take a set of annotations and separate them into a mapping of ({@code hierarchy top -> annotations in hierarchy})
+     */
+    public static Map<AnnotationMirror, AnnotationMirror> createHierarchyMap(final Set<AnnotationMirror> annos,
+                                                                             final QualifierHierarchy qualifierHierarchy) {
+        Map<AnnotationMirror, AnnotationMirror> result = AnnotationUtils.createAnnotationMap();
+
+
+        for (AnnotationMirror anno : annos) {
+            result.put(qualifierHierarchy.getTopAnnotation(anno), anno);
+        }
+
+        return result;
+    }
+
+    /**
      * Used to detect if the visited type contains one of the type variables in the typeVars parameter
      */
     private static class TypeVariableFinder extends AnnotatedTypeScanner<Boolean, List<TypeVariable>> {
@@ -282,7 +288,7 @@ public class TypeArgInferenceUtil {
             if (r1 == null) {
                 return r2 != null && r2;
 
-            } else if(r2 == null) {
+            } else if (r2 == null) {
                 return r1;
             }
 

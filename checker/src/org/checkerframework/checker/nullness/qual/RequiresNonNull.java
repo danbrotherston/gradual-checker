@@ -42,11 +42,9 @@ import org.checkerframework.framework.qual.PreconditionAnnotation;
 @PreconditionAnnotation(qualifier = NonNull.class)
 public @interface RequiresNonNull {
     /**
-     * The Java expressions which need to be {@link NonNull}.
+     * The Java expressions that need to be {@link NonNull}.
      *
-     * @see <a
-     *      href="http://types.cs.washington.edu/checker-framework/current/checker-framework-manual.html#java-expressions-as-arguments">Syntax
-     *      of Java expressions</a>
+     * @checker_framework.manual #java-expressions-as-arguments Syntax of Java expressions
      */
     String[] value();
 }

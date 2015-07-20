@@ -19,9 +19,10 @@ public class GradualNullnessAnnotatedTypeFactory extends NullnessAnnotatedTypeFa
     }
 
     @Override
-    protected void addUntypedDefaultsToQualifierDefaults(QualifierDefaults defs) {
-	defs.addUntypedDefault(AnnotationUtils.fromClass(elements, Dynamic.class),
+    protected boolean addUnannotatedDefaultsToQualifierDefaults(QualifierDefaults defs, boolean unused) {
+	defs.addUnannotatedDefault(AnnotationUtils.fromClass(elements, Dynamic.class),
 			       DefaultLocation.RETURNS);
+	return false;
     }
 
     @Override

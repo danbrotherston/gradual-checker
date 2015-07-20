@@ -4,7 +4,7 @@
 releaseutils.py
 
 Python Utils for releasing the Checker Framework
-This contains no main method only utility functions 
+This contains no main method only utility functions
 Created by Jonathan Burke 11/21/2012
 
 Copyright (c) 2012 University of Washington
@@ -219,7 +219,7 @@ def match_one(toTest, patternStrings):
             return patternStr
 
     return None
-        
+
 #=========================================================================================
 # Version Utils
 
@@ -281,7 +281,7 @@ def extract_from_site( site, open_tag, close_tag ):
     result = ver_re.search(text)
     return result.group(1)
 
-    
+
 def latest_openjdk(site):
     ver_re = re.compile(r"Build b(\d+)")
     text = urllib2.urlopen(url=site).read()
@@ -346,7 +346,7 @@ def find_latest_version( version_dir ):
     return max_version( filter( os.path.isdir, os.listdir(version_dir) ) )
 
 def get_afu_version_from_html( html_file_path ):
-    version_regex = "<!-- afu-version -->(\\d+\\.\\d+\\.?\\d?),.*<!-- /afu-version -->"
+    version_regex = "<!-- afu-version -->(\\d+\\.\\d+\\.?\\d*),.*<!-- /afu-version -->"
     version   = find_first_instance(version_regex, html_file_path, "")
     if version is None:
         raise Exception( "Could not detect Annotation File Utilities version in file " + html_file_path )
@@ -388,13 +388,13 @@ def update_projects(paths):
 
 #Commit the changes we made for this release
 #Then add a tag for this release
-#And push these changes 
+#And push these changes
 def commit_tag_and_push(version, path, tag_prefix):
     execute('hg -R %s commit -m "new release %s"' % (path, version))
     execute('hg -R %s tag %s%s' % (path, tag_prefix, version))
     execute('hg -R %s push' % path)
-    
-# Retrive the changes since the tag (prefix + prev_version)
+
+# Retrieve the changes since the tag (prefix + prev_version)
 def retrieve_changes(root, prev_version, prefix):
     return execute(
             "hg -R %s log -r %s%s:tip --template ' * {desc}\n'" %
@@ -542,7 +542,7 @@ def wget_file( source_url, destination_dir ):
     execute( "wget %s" % source_url, True, False, destination_dir )
 
 #Note:  This will download the directory into a directory location as follow:
-#Suppose we have a ur:  http://level0/level1/target
+#Suppose we have a url:  http://level0/level1/target
 #It will download the files into the following directory
 #destination_dir/level0/level1/target
 #use wget_dir_flat if you'd like all files to be just output to destination_dir
@@ -710,7 +710,7 @@ def changelog_header(filename):
         header.append(line)
 
     return ''.join(header)
-    
+
 def get_changelog_date():
     import datetime
     return datetime.datetime.now().strftime("%d %b %Y")
@@ -747,14 +747,14 @@ Base build
 
 ----------------------------------------------------------------------
 """ % (version, get_changelog_date(), latest_jdk, changes)
-    
+
 #Checker Framework Specific Change log method
 #Queries whether or not the user wants to update the checker framework changelog
 #then opens the changelog in the supplied editor
 def edit_checkers_changelog(version, path, editor, changes=""):
     desc = make_checkers_change_desc(version, changes)
     edit_changelog("Checker Framework", path, version, desc, editor)
-    
+
 
 #JSR308 Specific Change log method
 #Queries whether or not the user wants to update the checker framework changelog
@@ -769,7 +769,7 @@ def edit_langtools_changelog(version, openJdkReleaseSite, path, editor, changes=
 # Maven Utils
 
 def mvn_deploy_file(name, binary, version, dest_repo, group_id, pom=None):
-    pomOps = "" 
+    pomOps = ""
     if pom is None:
         pomOps= "-DgeneratePom=True"
     else:
@@ -806,7 +806,7 @@ def pluginDirToPom(pluginDir):
 
 def mvn_plugin_version(pluginDir):
     "Extract the version number from pom.xml in pluginDir/pom.xml"
-    pomLoc = pluginDirToPom(pluginDir) 
+    pomLoc = pluginDirToPom(pluginDir)
     dom = minidom.parse(pomLoc)
     version = ""
     project = dom.getElementsByTagName("project").item(0)
@@ -815,7 +815,7 @@ def mvn_plugin_version(pluginDir):
         if childNode.nodeName == 'version':
             if childNode.hasChildNodes():
                 version = childNode.firstChild.nodeValue
-            else: 
+            else:
                 print "Empty Maven plugin version!"
                 sys.exit(1)
             break
@@ -901,23 +901,19 @@ def print_step( step ):
 
 def get_announcement_email( version ):
     return """
-    To:  jsr308-discuss@googlegroups.com, checker-framework-discuss@googlegroups.com
-    Subject: Release %s of the Checker Framework and Type Annotations compiler
+    To:  checker-framework-discuss@googlegroups.com
+    Subject: Release %s of the Checker Framework
 
-    We have released a new version of the Type Annotations (JSR 308) compiler, 
-    the Checker Framework, and the Eclipse plugin for the Checker Framework.
+    We have released a new version of the Checker Framework
+    and the Eclipse plugin for the Checker Framework.
 
-    * The Type Annotations compiler supports type annotation syntax.
     * The Checker Framework lets you create and/or run pluggable type checkers,
       in order to detect and prevent bugs in your code.
     * The Eclipse plugin makes it more convenient to run the Checker Framework.
 
     You can find documentation and download links for these projects at:
-    http://types.cs.washington.edu/jsr308/
+    http://CheckerFramework.org/
 
     Changes for the Checker Framework
-    <<Insert latest Checker Framework changelog update, possibly edited for brevity and clarity>>
-
-    Changes for the Type Annotations Compiler
-    <<Insert latest Jsr308-langtool changelog update, possibly edited for brevity and clarity>>
+    <<Insert latest Checker Framework changelog entry>>
     """ % ( version )

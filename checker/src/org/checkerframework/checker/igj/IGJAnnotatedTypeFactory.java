@@ -108,7 +108,7 @@ import com.sun.source.tree.TypeCastTree;
  * <li value="10">any remaining unqualified types (i.e. Mutable is the default)
  * </ol>
  *
- * Implementation detail:  (*) cases are handled with a meta annotation
+ * Implementation detail:  (*) cases are handled with a meta-annotation
  * rather than in this class.
  * <p>
  *
@@ -948,7 +948,7 @@ public class IGJAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
             boolean ignoreTypeArgs = ignoreRawTypes && (subtypeIsRaw || supertypeIsRaw);
 
-            if(!ignoreTypeArgs) {
+            if (!ignoreTypeArgs) {
                 if (supertype.hasEffectiveAnnotation(MUTABLE)) {
                     return super.visitTypeArgs(subtype, supertype, visited,  subtypeIsRaw, supertypeIsRaw);
                 }

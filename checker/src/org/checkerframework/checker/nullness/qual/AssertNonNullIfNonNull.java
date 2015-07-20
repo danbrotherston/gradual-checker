@@ -1,10 +1,12 @@
 package org.checkerframework.checker.nullness.qual;
 
-import java.lang.annotation.*;
-
 import org.checkerframework.checker.nullness.NullnessChecker;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.PolyNull;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  * Indicates that if the method returns a non-null value, then the value
@@ -19,7 +21,7 @@ import org.checkerframework.checker.nullness.qual.PolyNull;
  *
  * <pre><code>     @AssertNonNullIfNonNull("id")
  *     {@literal @}Pure
- *     public @Nullable Long getId(){
+ *     public @Nullable Long getId() {
  *         return id;
  *     }
  * </code></pre>
@@ -47,7 +49,7 @@ public @interface AssertNonNullIfNonNull {
 
     /**
      * Java expression(s) that are non-null after the method returns a non-null vlue.
-     * @see <a href="http://types.cs.washington.edu/checker-framework/current/checker-framework-manual.html#java-expressions-as-arguments">Syntax of Java expressions</a>
+     * @checker_framework.manual #java-expressions-as-arguments Syntax of Java expressions
      */
     String[] value();
 }

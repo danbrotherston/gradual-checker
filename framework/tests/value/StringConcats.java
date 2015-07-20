@@ -1,7 +1,7 @@
 import org.checkerframework.common.value.qual.StringVal;
 
-class Test{
-    void stringConcat(){
+class Test {
+    void stringConcat() {
         @StringVal("helloa11.01.020truenull2626")  String everything = "hello"+'a'+1+1.0+1.0f+20L+true+null+0x1a+0b11010;
 
        @StringVal("true") String bool = ""+true;
@@ -16,8 +16,8 @@ class Test{
        @StringVal("123.0") String science = ""+1.23e2;
 
     }
-    
-    void compoundStringAssignement(){
+
+    void compoundStringAssignement() {
         String s = "";
         s+="hello";
         s+='a';
@@ -33,6 +33,6 @@ class Test{
         //compound assignments have not been implemented.
         //:: error: (assignment.type.incompatible)
         @StringVal("helloa11.01.020truenull2626") String all = s;
-        
+
     }
 }

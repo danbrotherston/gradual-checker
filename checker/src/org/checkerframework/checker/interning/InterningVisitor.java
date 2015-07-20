@@ -121,10 +121,10 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
 
         Element leftElt = null;
         Element rightElt = null;
-        if(left instanceof org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedDeclaredType){
+        if (left instanceof org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedDeclaredType) {
             leftElt = ((DeclaredType)left.getUnderlyingType()).asElement();
         }
-        if(right instanceof org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedDeclaredType){
+        if (right instanceof org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedDeclaredType) {
             rightElt = ((DeclaredType)right.getUnderlyingType()).asElement();
         }
 
@@ -167,7 +167,7 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
      * @see org.checkerframework.common.basetype.BaseTypeVisitor#visitClass(com.sun.source.tree.ClassTree, java.lang.Object)
      */
     @Override
-    public Void visitClass(ClassTree node, Void p){
+    public Void visitClass(ClassTree node, Void p) {
         //Looking for an @UsesObjectEquals class declaration
 
         TypeElement elt = TreeUtils.elementFromDeclaration(node);
@@ -175,28 +175,28 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
 
         Tree superClass = node.getExtendsClause();
         Element elmt = null;
-        if (superClass!= null && (superClass instanceof IdentifierTree || superClass instanceof MemberSelectTree)){
+        if (superClass!= null && (superClass instanceof IdentifierTree || superClass instanceof MemberSelectTree)) {
             elmt = TreeUtils.elementFromUse((ExpressionTree)superClass);
         }
 
 
         //if it's there, check to make sure does not override equals
         //and supertype is Object or @UsesObjectEquals
-        if (annotation != null){
+        if (annotation != null) {
             //check methods to ensure no .equals
-            if(overridesEquals(node)){
+            if (overridesEquals(node)) {
                 checker.report(Result.failure("overrides.equals"), node);
             }
 
 
-            if(!(superClass == null || (elmt != null && elmt.getAnnotation(UsesObjectEquals.class) != null))){
+            if (!(superClass == null || (elmt != null && elmt.getAnnotation(UsesObjectEquals.class) != null))) {
                 checker.report(Result.failure("superclass.unmarked"), node);
             }
         } else {
             //the class is not marked @UsesObjectEquals -> make sure its superclass isn't either.
             //this is impossible after design change making @UsesObjectEquals inherited?
             //check left in case of future design change back to non-inherited.
-            if(superClass != null && (elmt != null && elmt.getAnnotation(UsesObjectEquals.class) != null)){
+            if (superClass != null && (elmt != null && elmt.getAnnotation(UsesObjectEquals.class) != null)) {
                 checker.report(Result.failure("superclass.marked"), node);
             }
         }
@@ -211,13 +211,13 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
     /**
      * Returns true if a class overrides Object.equals
      */
-    private boolean overridesEquals(ClassTree node){
+    private boolean overridesEquals(ClassTree node) {
         List<? extends Tree> members = node.getMembers();
-        for(Tree member : members){
-            if(member instanceof MethodTree){
+        for (Tree member : members) {
+            if (member instanceof MethodTree) {
                 MethodTree mTree = (MethodTree) member;
                 ExecutableElement enclosing = TreeUtils.elementFromDeclaration(mTree);
-                if(overrides(enclosing, Object.class, "equals")){
+                if (overrides(enclosing, Object.class, "equals")) {
                     return true;
                 }
             }
@@ -288,6 +288,7 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
      *         otherwise
      */
     // TODO: handle != comparisons too!
+    // TODO: handle more methods, such as early return from addAll when this == arg
     private boolean suppressInsideComparison(final BinaryTree node) {
         // Only handle == binary trees
         if (node.getKind() != Tree.Kind.EQUAL_TO)
@@ -315,7 +316,7 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
         final Element rhs = TreeUtils.elementFromUse((IdentifierTree)right);
 
         //Matcher to check for if statement that returns zero
-        Heuristics.Matcher matcher = new Heuristics.Matcher() {
+        Heuristics.Matcher matcherIfReturnsZero = new Heuristics.Matcher() {
 
                 @Override
                 public Boolean visitIf (IfTree tree, Void p) {
@@ -343,7 +344,7 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
         if (overrides(enclosing, Comparator.class, "compare")) {
             final boolean returnsZero =
                 Heuristics.Matchers.withIn(
-                        Heuristics.Matchers.ofKind(Tree.Kind.IF, matcher)).match(getCurrentPath());
+                        Heuristics.Matchers.ofKind(Tree.Kind.IF, matcherIfReturnsZero)).match(getCurrentPath());
 
             if (!returnsZero)
                 return false;
@@ -366,7 +367,7 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
 
             final boolean returnsZero =
                 Heuristics.Matchers.withIn(
-                        Heuristics.Matchers.ofKind(Tree.Kind.IF, matcher)).match(getCurrentPath());
+                        Heuristics.Matchers.ofKind(Tree.Kind.IF, matcherIfReturnsZero)).match(getCurrentPath());
 
             if (!returnsZero) {
                 return false;
@@ -404,8 +405,7 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
      * </pre>
      * Returns true iff the given node fits this pattern.
      *
-     * @param node
-     * @return true iff the node fits the pattern (a == b || a.equals(b))
+     * @return true iff the node fits a pattern such as (a == b || a.equals(b))
      */
     private boolean suppressEarlyEquals(final BinaryTree node) {
         // Only handle == binary trees
@@ -417,7 +417,7 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
         final ExpressionTree right = unparenthesize(node.getRightOperand());
 
         // looking for ((a == b || a.equals(b))
-        Heuristics.Matcher matcher = new Heuristics.Matcher() {
+        Heuristics.Matcher matcherEqOrEquals = new Heuristics.Matcher() {
 
                 // Returns true if e is either "e1 != null" or "e2 != null"
                 private boolean isNeqNull(ExpressionTree e, ExpressionTree e1, ExpressionTree e2) {
@@ -515,7 +515,7 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
             };
 
         boolean okay = Heuristics.Matchers.withIn(
-                Heuristics.Matchers.ofKind(Tree.Kind.CONDITIONAL_OR, matcher)).match(getCurrentPath());
+                Heuristics.Matchers.ofKind(Tree.Kind.CONDITIONAL_OR, matcherEqOrEquals)).match(getCurrentPath());
         return okay;
     }
 
@@ -524,7 +524,6 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
      * {@code (a == b || a.compareTo(b) == 0)}. Returns true iff
      * the given node fits this pattern.
      *
-     * @param node
      * @return true iff the node fits the pattern (a == b || a.compareTo(b) == 0)
      */
     private boolean suppressEarlyCompareTo(final BinaryTree node) {
@@ -545,7 +544,7 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
         final Element rhs = TreeUtils.elementFromUse((IdentifierTree)right);
 
         // looking for ((a == b || a.compareTo(b) == 0)
-        Heuristics.Matcher matcher = new Heuristics.Matcher() {
+        Heuristics.Matcher matcherEqOrCompareTo = new Heuristics.Matcher() {
 
                 @Override
                 public Boolean visitBinary(BinaryTree tree, Void p) {
@@ -612,7 +611,7 @@ public final class InterningVisitor extends BaseTypeVisitor<InterningAnnotatedTy
             };
 
         boolean okay = Heuristics.Matchers.withIn(
-                Heuristics.Matchers.ofKind(Tree.Kind.CONDITIONAL_OR, matcher)).match(getCurrentPath());
+                Heuristics.Matchers.ofKind(Tree.Kind.CONDITIONAL_OR, matcherEqOrCompareTo)).match(getCurrentPath());
         return okay;
     }
 

@@ -4,7 +4,7 @@
 <project name="stubparser" default="dist" basedir=".">
 
     <description>
-        Builds the java parser for JSR 308 index files.
+        Builds the Java parser for Checker Framework stub files.
     </description>
 
     <property file="build.${os.name}.properties"/>
@@ -56,7 +56,7 @@
              there is likely also a build dependency to that project.
              Please add it as well and keep both in sync. -->
         <javadoc destdir="${api.doc}"
-                 failonerror="true" failonwarning="true">
+                 failonerror="true">
             <!-- To add later:    additionalParam="-Xdoclint:all,-missing" -->
             <fileset dir="src">
                 <include name="**/*.java"/>

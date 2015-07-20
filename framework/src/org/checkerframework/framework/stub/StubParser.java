@@ -357,6 +357,7 @@ public class StubParser {
                     }
                 }
             }
+            warn = warn || debugStubParser;
             if (warn) {
                 stubWarning("Type not found: " + typeName);
             }
@@ -405,7 +406,7 @@ public class StubParser {
                 // the Java 6 specification.
                 // System.out.printf("Dying.  theCompilationUnit=%s%n", theCompilationUnit);
                 if (debugStubParser) {
-                    stubDebug(String.format("parseType:  mismatched sizes for params and args%n  decl=%s%n  typeParameters=%s%n  elt=%s (%s)%n  type=%s (%s)%n  typeArguments (size %d)=%s%n  theCompilationUnit=%s%nEnd of Message%n",
+                    stubDebug(String.format("parseType:  mismatched sizes for params and args%n  decl=%s%n  typeParameters=%s%n  elt=%s (%s)%n  type=%s (%s)%n  typeArguments (size %d)=%s%n  theCompilationUnit=%s%nEnd of message for parseType:  mismatched sizes for params and args%n",
                                               decl, typeParameters,
                                               elt, elt.getClass(), type, type.getClass(), typeArguments.size(), typeArguments,
                                               theCompilationUnit));
@@ -420,7 +421,7 @@ public class StubParser {
                 // TODO: decide how severe this problem really is; see comment above.
                 // System.out.printf("Dying.  theCompilationUnit=%s%n", theCompilationUnit);
                 if (debugStubParser) {
-                    stubDebug(String.format("parseType:  mismatched sizes for params and args%n  decl=%s%n  typeParameters (size %d)=%s%n  elt=%s (%s)%n  type=%s (%s)%n  typeArguments (size %d)=%s%n  theCompilationUnit=%s%nEnd of Message%n",
+                    stubDebug(String.format("parseType:  mismatched sizes for params and args%n  decl=%s%n  typeParameters (size %d)=%s%n  elt=%s (%s)%n  type=%s (%s)%n  typeArguments (size %d)=%s%n  theCompilationUnit=%s%nEnd of message for parseType:  mismatched sizes for params and args%n",
                                               decl, typeParameters.size(), typeParameters,
                                               elt, elt.getClass(), type, type.getClass(), typeArguments.size(), typeArguments,
                                               theCompilationUnit));
@@ -506,9 +507,6 @@ public class StubParser {
 
     /**
      * Adds a declAnnotation to every method in the stub file.
-     *
-     * @param declAnnos
-     * @param elt
      */
     private void addDeclAnnotations(
             Map<String, Set<AnnotationMirror>> declAnnos, Element elt) {
@@ -889,7 +887,6 @@ public class StubParser {
 
     /**
      * Issues a warning even if -AstubWarnIfNotFound or -AstubDebugs options are not passed.
-     * @param warning
      */
     private void stubAlwaysWarn(String warning) {
         if (warnings.add(warning)) {

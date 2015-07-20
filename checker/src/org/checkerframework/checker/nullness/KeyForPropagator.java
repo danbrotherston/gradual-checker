@@ -9,13 +9,14 @@ import org.checkerframework.framework.util.TypeArgumentMapper;
 import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.Pair;
 
+import java.util.List;
+import java.util.Set;
+
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.util.Types;
-import java.util.List;
-import java.util.Set;
 
 
 /**
@@ -57,7 +58,7 @@ public class KeyForPropagator {
      * Note the primary annotations of subtype/supertype are not used.
      *
      * Simple Example:
-     * <pre>{@code 
+     * <pre>{@code
      * typeOf(subtype) = ArrayList<@KeyFor("a") String>
      * typeOf(supertype) = List<@UnknownKeyFor String>
      * direction = TO_SUPERTYPE
@@ -81,9 +82,20 @@ public class KeyForPropagator {
         final TypeElement supertypeElement = (TypeElement) supertype.getUnderlyingType().asElement();
         final Types types = typeFactory.getProcessingEnv().getTypeUtils();
 
+        //Note: The right hand side of this or expression will cover raw types
         if (subtype.getTypeArguments().isEmpty()) {
             return;
+        } //else
+
+        //this can happen for two reasons:
+        // 1) the subclass introduced NEW type arguments when the superclass had none
+        // 2) the supertype was RAW.
+        //In either case, there is no reason to propagate
+        if (supertype.getTypeArguments().isEmpty()) {
+            return;
         }
+
+
 
         Set<Pair<Integer, Integer>> typeParamMappings =
              TypeArgumentMapper.mapTypeArgumentIndices(subtypeElement, supertypeElement, types);
@@ -93,7 +105,7 @@ public class KeyForPropagator {
         final List<AnnotatedTypeMirror> subtypeArgs = subtype.getTypeArguments();
         final List<AnnotatedTypeMirror> supertypeArgs = supertype.getTypeArguments();
 
-        for(final Pair<Integer, Integer> path : typeParamMappings) {
+        for (final Pair<Integer, Integer> path : typeParamMappings) {
             final AnnotatedTypeMirror subtypeArg = subtypeArgs.get(path.first);
             final AnnotatedTypeMirror supertypeArg = supertypeArgs.get(path.second);
 

@@ -1,9 +1,9 @@
 \htmlhr
 \chapter{How to create a new checker\label{writing-a-checker}}
 
-\newcommand{\TreeAPIBase}{http://types.cs.washington.edu/checker-framework/jdk-api/javac/com/sun/source}
+\newcommand{\TreeAPIBase}{https://docs.oracle.com/javase/8/docs/jdk/api/javac/tree/com/sun/source/}
 \newcommand{\refTreeclass}[2]{\href{\TreeAPIBase{}/#1/#2.html?is-external=true}{\<#2>}}
-\newcommand{\ModelAPIBase}{http://types.cs.washington.edu/checker-framework/jdk-api/javac/javax/lang/model}
+\newcommand{\ModelAPIBase}{http://docs.oracle.com/javase/8/docs/api/javax/lang/model/}
 \newcommand{\refModelclass}[2]{\href{\ModelAPIBase{}/#1/#2.html?is-external=true}{\<#2>}}
 
 This chapter describes how to create a checker
@@ -13,12 +13,6 @@ the checker plugin verifies that the code is consistent
 with the annotations.
 If you only want to \emph{use} a checker, you do not need to read this
 chapter.
-
-% TODO: address all the issues and remove this paragraph.
-\textbf{Warning:} Due to recent improvements and refactorings, a few parts
-of this chapter are out of date as of December 2013.  The Checker Framework
-developers are working to update it.  If you notice inaccuracies or can
-make suggestions to improve this chapter, please do so.  Thanks!
 
 
 Writing a simple checker is easy!  For example, here is a complete, useful
@@ -99,7 +93,7 @@ Annotation File Utilities to manipulate \code{.java} and \code{.class} files.
 \centering Tainting \par Checker &
 \centering \ldots &
 \centering Your \par Checker &
-\multicolumn{2}{c}{} 
+\multicolumn{2}{c}{}
 \\ \hline
 \multicolumn{6}{|p{6\bw}|}{\centering Base Checker \par (enforces subtyping rules)} &
 \centering Type \par inference &
@@ -107,7 +101,7 @@ Annotation File Utilities to manipulate \code{.java} and \code{.class} files.
 Other \par tools
 \\ \hline
 \multicolumn{6}{|p{6\bw}|}{\centering Checker Framework \par (enables creation of pluggable type-checkers)} &
-\multicolumn{2}{p{3\bw}|}{\centering \href{http://types.cs.washington.edu/annotation-file-utilities/}{Annotation File Utilities} \par (\code{.java} $\leftrightarrow$ \code{.class} files)} 
+\multicolumn{2}{p{3\bw}|}{\centering \href{http://types.cs.washington.edu/annotation-file-utilities/}{Annotation File Utilities} \par (\code{.java} $\leftrightarrow$ \code{.class} files)}
 \\ \hline
 \multicolumn{8}{|p{8.5\bw}|}{\centering
   \href{http://types.cs.washington.edu/jsr308/}{Type Annotations} syntax
@@ -147,6 +141,9 @@ the components of a type system as written using the Checker Framework:
   other than \<null> has a \refqualclass{checker/nullness/qual}{NonNull} type;
   examples of literals include \<"some string"> and \<java.util.Date.class>.
 
+  Optionally, write dataflow rules to enhance flow-sensitive type qualifier
+  inference (Section~\ref{dataflow}).
+
 \item{\ref{extending-visitor}}
   \textbf{Type rules.}  You specify the type system semantics (type
   rules), violation of which yields a type error.  There are two types of
@@ -173,8 +170,17 @@ the components of a type system as written using the Checker Framework:
 
 \section{Annotations: Type qualifiers and hierarchy\label{writing-typequals}}
 
-A type system designer specifies the qualifiers in the type system and
+A type system designer specifies the qualifiers in the type system (Section~\ref{define-type-qualifiers})
+and
 the type hierarchy that relates them.
+The type hierarchy --- the subtyping relationships among the qualifiers ---
+can be defined either
+declaratively via meta-annotations (Section~\ref{declarative-hierarchy}), or procedurally through
+subclassing \refclass{framework/type}{QualifierHierarchy} or
+\refclass{framework/type}{TypeHierarchy} (Section~\ref{procedural-hierarchy}).
+
+
+\subsection{Defining the type qualifiers\label{define-type-qualifiers}}
 
 %% True, but seems irrelevant here, so it detracts from the message.
 % Each qualifier restricts the values that
@@ -211,13 +217,13 @@ definition, such as \refqualclass{framework/qual}{TypeQualifier}, is called a \e
 % declaration does not bear the \<@TypeQualifier> meta-annotation (with minor
 % exceptions, such as \<@SuppressWarnings>).
 
-The type hierarchy induced by the qualifiers can be defined either
-declaratively via meta-annotations (Section~\ref{declarative-hierarchy}), or procedurally through
-subclassing \refclass{framework/type}{QualifierHierarchy} or
-\refclass{framework/type}{TypeHierarchy} (Section~\ref{procedural-hierarchy}).
+Your type system should include a top qualifier and a bottom qualifier
+(Section~\ref{bottom-and-top-qualifier}).  You should also define a
+polymorphic qualifier \<@Poly\emph{MyTypeSystem}>
+(Section~\ref{qualifier-polymorphism}).
 
 
-\subsection{Declaratively defining the qualifier and type hierarchy\label{declarative-hierarchy}}
+\subsection{Declaratively defining the qualifier hierarchy\label{declarative-hierarchy}}
 
 Declaratively, the type system designer uses two meta-annotations (written
 on the declaration of qualifier annotations) to specify the qualifier
@@ -301,16 +307,16 @@ The declarative and procedural mechanisms for specifying the hierarchy can
 be used together.  In particular, when using the \refqualclass{framework/qual}{SubtypeOf}
 meta-annotation, further customizations may be
 performed procedurally (Section~\ref{procedural-hierarchy})
-by overriding the \href{api/org/checkerframework/framework/util/GraphQualifierHierarchy.html#isSubtype-java.util.Collection-java.util.Collection-}{\code{isSubtype}} method in the checker class
+by overriding the \refmethodterse{framework/util}{GraphQualifierHierarchy}{isSubtype}{-java.util.Collection-java.util.Collection-} method in the checker class
 (Section~\ref{writing-compiler-interface}).
 However, the declarative mechanism is sufficient for most type systems.
 
 
-\subsection{Procedurally defining the qualifier and type hierarchy\label{procedural-hierarchy}}
+\subsection{Procedurally defining the qualifier hierarchy\label{procedural-hierarchy}}
 
 While the declarative syntax suffices for many cases, more complex
-type hierarchies can be expressed by overriding, in \refclass{common/basetype}{BaseTypeVisitor},
-either \href{api/org/checkerframework/framework/type/AnnotatedTypeFactory.html#createQualifierHierarchy--}{\<createQualifierHierarchy>} or \href{api/org/checkerframework/framework/type/AnnotatedTypeFactory.html#createTypeHierarchy--}{\<createTypeHierarchy>} (typically
+type hierarchies can be expressed by overriding, in your subclass of \refclass{common/basetype}{BaseTypeVisitor},
+either \refmethodterse{framework/type}{AnnotatedTypeFactory}{createQualifierHierarchy}{--} or \refmethodterse{framework/type}{AnnotatedTypeFactory}{createTypeHierarchy}{--} (typically
 only one of these needs to be overridden).
 For more details, see the Javadoc of those methods and of the classes
 \refclass{framework/type}{QualifierHierarchy} and \refclass{framework/type}{TypeHierarchy}.
@@ -345,10 +351,9 @@ manner (e.g.,
 
 \subsection{Defining a default annotation\label{typesystem-defaults}}
 
-% This paragraph is out of place.
-
-A type system designer may set a default annotation.  A user may override
-the default; see Section~\ref{defaults}.
+A type system applies a default qualifier where the user has not written a
+qualifier (and no implicit qualifier is applicable), as explained in
+Section~\ref{defaults}.
 
 The type system designer may specify a default annotation declaratively,
 using the \refqualclass{framework/qual}{DefaultQualifierInHierarchy}
@@ -360,16 +365,11 @@ files that the checker reads.
 \begin{sloppypar}
 Alternately, the type system designer may specify a default procedurally,
 by calling the
-\href{api/org/checkerframework/framework/util/QualifierDefaults.html#addAbsoluteDefault-javax.lang.model.element.AnnotationMirror-org.checkerframework.framework.qual.DefaultLocation-}{\<QualifierDefaults.addAbsoluteDefault>}
+\refmethod{framework/util/defaults}{QualifierDefaults}{addAbsoluteDefault}{-javax.lang.model.element.AnnotationMirror-org.checkerframework.framework.qual.DefaultLocation-}
 method.  You may do this even if you have declaratively defined the
 qualifier hierarchy; see the Nullness Checker's implementation for an
 example.
 \end{sloppypar}
-
-
-Recall that defaults are distinct
-from implicit annotations; see Sections~\ref{effective-qualifier}
-and~\ref{writing-type-introduction}.
 
 
 \subsection{Completeness of the type hierarchy\label{bottom-and-top-qualifier}}
@@ -383,7 +383,8 @@ explicitly for the type system, rather than (say) reusing a qualifier from the
 Checker Framework such as \<@Unqualified>.
 
 It is possible that a single type-checker checks multiple type hierarchies.
-An example is the Nullness Checker that has separate type hierarchies for
+An example is the Nullness Checker, which has three separate type
+hierarchies, one each for
 nullness, initialization, and map keys.  In this case, each type hierarchy
 would have its own top qualifier and its own bottom qualifier; they don't
 all have to share a single top qualifier or a single bottom qualifier.
@@ -401,9 +402,10 @@ will not type-check unless \<null> has the bottom type:
 \begin{Verbatim}
 <T> T f() {
     return null;
+}
 \end{Verbatim}
 
-You don't necessarily have to define a new bottom qualifier.  But, You can
+You don't necessarily have to define a new bottom qualifier.  You can
 use \<org.checkerframework.framework.qual.Bottom> if your type system does not already have an
 appropriate bottom qualifier.
 
@@ -433,6 +435,7 @@ defined like this:
 Your type hierarchy must have a top qualifier
 --- a qualifier that is a (direct or indirect) supertype of every other
 qualifier.
+Here is the reason.
 The default type for local variables is the top
 qualifier (that type is then flow-sensitively
 refined depending on what values are stored in the local variable).
@@ -440,49 +443,15 @@ If there is no single top qualifier, then there is no
 unambiguous choice to make for local variables.
 
 Furthermore, it is most convenient to users if the top qualifier is defined
-by the type system.  An example of a type system that does
-\emph{not} do that is the \<@Encrypted> type system of
-Section~\ref{encrypted-example}.  It lacks its own explicit top qualifier and instead
-uses \<@Unqualified>, which is shared across multiple type systems:
-
-\begin{Verbatim}
-  @TypeQualifier
-  @SubtypeOf(Unqualified.class)
-  @Target({ElementType.TYPE_USE, ElementType.TYPE_PARAMETER})
-  public @interface Encrypted {}
-\end{Verbatim}
-
-% \noindent
-% The interning type system of Section~\ref{interning-checker} also lacks a
-% top qualifier; there is no \<@Uninterned> qualifier that is a supertype of 
-% \refqualclass{checker/interning/qual}{Interned}.
-
-\noindent
-It can be convenient to use \<@Unqualified> as the top type to avoid
-having to define your own top type.  The disadvantage is that users lose
+by the type system.  It is possible to use the framework's
+\<@Unqualified> as the top type, but this is poor practice.
+Users lose
 flexibility in expressing defaults:  there is no
 way for a user to change the default qualifier for just that type system.
 If a user specifies
 \<@DefaultQualifier(Unqualified.class)>,
 then the default would apply to every
 type system that uses \<@Unqualified>, which is unlikely to be desired.
-
-It is best if a type system as an explicit qualifier for every
-possible meaning.  For example,
-the Nullness type system has both \refqualclass{checker/nullness/qual}{Nullable} and
-\refqualclass{checker/nullness/qual}{NonNull}.  Because it has no built-in meaning
-for unannotated types; a user may specify a default qualifier.  This
-greater flexibility for the user is usually preferable.
-
-There are reasons to not explicitly define the top qualifier, but to reuse
-\<@Unqualified>.
-The ability to omit the top qualifier is a convenience
-when writing a type system, because it reduces the number of qualifiers
-that must be defined; this is especially convenient when using the Subtyping
-Checker (Chapter~\ref{subtyping-checker}).
-% TODO: Examples of the following?
-More importantly, omitting the top qualifier restricts the user in ways
-that the type system designer may have intended.
 
 
 \section{Type factory: Implicit annotations\label{writing-type-introduction}}
@@ -600,18 +569,19 @@ such constructs.
 
 \section{Dataflow: enhancing flow-sensitive type qualifier inference\label{dataflow}}
 
-The Checker Framework provides automatic type refinement as described
+By default, every checker performs automatic type refinement, also known as
+flow inference, as described
 in Section~\ref{type-refinement}.
 
-Class
-\refclass{common/basetype}{BaseAnnotatedTypeFactory}
-provides a 2 parameter constructor that allows subclasses to disable
-flow inference.
-By default the 1 parameter constructor performs flow inference.
-To disable flow inference, call
-\code{super(checker, root, false);}
-in your subtype of
-\refclass{common/basetype}{BaseAnnotatedTypeFactory}.
+In the uncommon case that you wish to disable flow inference in your
+checker, put the following two lines at the beginning of the constructor
+for your subtype of
+\refclass{common/basetype}{BaseAnnotatedTypeFactory}:
+
+\begin{Verbatim}
+        // use true to enable flow inference, false to disable it
+        super(checker, false);
+\end{Verbatim}
 
 You can enhance the Checker Framework's built-in flow-sensitive type refinement,
 so that it is more powerful and is customized to your type system. In
@@ -676,7 +646,7 @@ be included on the classpath like other components of your checker.
   overriding superclass methods.
 
   The Regex Checker's extended \refclass{framework/flow}{CFAbstractTransfer} is
-  \refclass{checker/regex}{RegexTransfer}.
+  \refclass{checker/regex/classic}{RegexTransfer}.
 
 \item \textbf{Create a class that extends
     \refclass{framework/flow}{CFAbstractAnalysis} and uses the extended
@@ -690,9 +660,9 @@ be included on the classpath like other components of your checker.
   extended \refclass{framework/flow}{CFAbstractTransfer}.
 
   The Regex Checker's extended \refclass{framework/flow}{CFAbstractAnalysis} is
-  \refclass{checker/regex}{RegexAnalysis}, which overrides the
+  \refclass{checker/regex/classic}{RegexAnalysis}, which overrides the
   \code{createTransferFunction} to return a new
-  \refclass{checker/regex}{RegexTransfer} instance:
+  \refclass{checker/regex/classic}{RegexTransfer} instance:
 
 %BEGIN LATEX
 \begin{smaller}
@@ -762,7 +732,7 @@ The \refclass{dataflow/cfg/node}{Node} subclasses can be found in the
 \refclass{dataflow/cfg/node}{VariableDeclarationNode}.
 
 The Regex Checker refines the type of a run-time test method call, so
-\refclass{checker/regex}{RegexTransfer} overrides the method that handles
+\refclass{checker/regex/classic}{RegexTransfer} overrides the method that handles
 \refclass{dataflow/cfg/node}{MethodInvocationNode}s,
 \code{visitMethodInvocation}.
 
@@ -810,7 +780,7 @@ visited.  (Remember that \refclass{common/basetype}{BaseTypeVisitor} uses the
 \refTreeclass{tree}{Tree}, and then performs checks on types of one or more
 \refTreeclass{tree}{Tree}s).
 
-When \refclass{checker/regex}{RegexTransfer} evaluates a
+When \refclass{checker/regex/classic}{RegexTransfer} evaluates a
 \code{RegexUtils.asRegex} invocation, it updates the
 \refclass{dataflow/analysis}{TransferResult}'s result type. This changes the
 type of the \code{RegexUtils.asRegex} invocation when it's
@@ -823,7 +793,7 @@ Updating the \refclass{dataflow/analysis}{Store} treats an expression as a
 having a refined type for the remainder of the method or conditional block. For
 example, when the Nullness Checker's dataflow evaluates \code{myvar != null}, it
 updates the \refclass{dataflow/analysis}{Store} to specify that the variable
-\code{myvar} hould be treated as having type \code{@NonNull} for the rest of the
+\code{myvar} should be treated as having type \code{@NonNull} for the rest of the
 then conditional block.  Not all kinds of expressions can be refined; currently
 method return values, local variables, fields, and array values can be stored in
 the \refclass{dataflow/analysis}{Store}.  Other kinds of expressions, like
@@ -859,7 +829,7 @@ instances of that \refclass{dataflow/cfg/node}{Node} kind in the program, so the
 \refclass{dataflow/cfg/node}{Node} must be inspected to determine if it is an
 instance of the desired run-time test or operation. For example,
 \code{visitMethodInvocation} is called when dataflow processes any method
-invocation, but the \refclass{checker/regex}{RegexTransfer} should only refine
+invocation, but the \refclass{checker/regex/classic}{RegexTransfer} should only refine
 the result of \code{RegexUtils.asRegex} invocations:
 
 %BEGIN LATEX
@@ -897,7 +867,7 @@ on the parts of run-time test or operation itself, such as arguments passed to
 it.
 
 For example, the refined type of \code{RegexUtils.asRegex} is dependent on the
-integer argument to the method call. The \refclass{checker/regex}{RegexTransfer}
+integer argument to the method call. The \refclass{checker/regex/classic}{RegexTransfer}
 uses this argument to build the resulting type \code{@Regex(i)}, where \code{i}
 is the value of the integer argument.  Note that currently this code only uses
 the value of the integer argument if the argument was an integer literal.  It
@@ -922,7 +892,7 @@ constant or was inferred at compile time by another analysis, such as the
 %END LATEX
 
 If the integer argument was not a literal integer, the
-\refclass{checker/regex}{RegexTransfer} falls back to refining the type to just
+\refclass{checker/regex/classic}{RegexTransfer} falls back to refining the type to just
 \code{@Regex(0)}.
 
 %BEGIN LATEX
@@ -943,7 +913,7 @@ If the integer argument was not a literal integer, the
 As discussed in section \ref{dataflow-determine-expressions}, the type of an
 expression is refined by modifying the
 \refclass{dataflow/analysis}{TransferResult}.  Since the
-\refclass{checker/regex}{RegexTransfer} is updating the type of the run-time
+\refclass{checker/regex/classic}{RegexTransfer} is updating the type of the run-time
 test itself, it will update the result type and not the
 \refclass{dataflow/analysis}{Store}.
 
@@ -992,7 +962,7 @@ The Checker Framework provides a \textit{base visitor class},
 \refclass{common/basetype}{BaseTypeVisitor}, that performs type-checking at each node of a
 source file's AST\@.  It uses the visitor design pattern to traverse
 Java syntax trees as provided by Oracle's
-\href{http://types.cs.washington.edu/checker-framework/jdk-api/javac/index.html}{Tree
+\href{http://docs.oracle.com/javase/8/docs/jdk/api/javac/tree/}{Tree
 API},
 and it issues a warning whenever the type system is violated.
 
@@ -1088,7 +1058,11 @@ type-checking rules.
 
 \section{The checker class:  Compiler interface\label{writing-compiler-interface}}
 
-A checker's entry point is a subclass of \refclass{common/basetype}{BaseTypeChecker}.  This entry
+A checker's entry point is a subclass of
+\refclass{framework/source}{SourceChecker}, and is usually a direct subclass
+of either \refclass{common/basetype}{BaseTypeChecker} or
+\refclass{framework/source}{AggregateChecker}.
+This entry
 point, which we call the checker class, serves two
 roles:  an interface to the compiler and a factory for constructing
 type-system classes.
@@ -1098,29 +1072,34 @@ checker class has no work to do.  Here are the complete definitions of the
 checker classes for the Interning Checker and the Nullness Checker:
 
 \begin{Verbatim}
-  @TypeQualifiers({ Interned.class, PolyInterned.class })
+  @TypeQualifiers({ Interned.class, PolyInterned.class, PolyAll.class })
   @SupportedLintOptions({"dotequals"})
   public final class InterningChecker extends BaseTypeChecker { }
 
-  @TypeQualifiers({ Nullable.class, Raw.class, NonNull.class, PolyNull.class })
+  @TypeQualifiers({ Nullable.class, Raw.class, NonNull.class, PolyNull.class, PolyAll.class })
   @SupportedLintOptions({"flow", "cast", "cast:redundant"})
   public class NullnessChecker extends BaseTypeChecker { }
 \end{Verbatim}
 
 
-The checker class must be annotated by
-\refqualclass{framework/qual}{TypeQualifiers}, which lists the annotations
+The checker class must indicate the annotations
 that make up the type hierarchy for this checker (including
-polymorphic qualifiers), provided as an array of class literals.  Each
-one is a type qualifier whose definition bears the
-\refqualclass{framework/qual}{TypeQualifier} meta-annotation (or is
-returned by the
-\href{http://types.cs.washington.edu/checker-framework/api/org/checkerframework/framework/type/AnnotatedTypeFactory.html#getSupportedTypeQualifiers--}{\<BaseTypeChecker\-.getSupportedTypeQualifiers>}
-method).
+polymorphic qualifiers), either via a
+\refqualclass{framework/qual}{TypeQualifiers} annotation or by overriding
+the
+\refmethodterse{framework/type}{AnnotatedTypeFactory}{createSupportedTypeQualifiers}{--}
+method.  Each argument to \<@TypeQualifiers> or value returned by
+\<createSupportedTypeQualifiers> is a class literal for a type qualifier
+whose definition bears the
+\refqualclass{framework/qual}{TypeQualifier} meta-annotation.
+An aggregate checker (which extends
+\refclass{framework/source}{AggregateChecker}) does not need to specify its
+type qualifiers, but each of its component checkers should do so.
+
 
 The checker class bridges between the compiler and the rest of the checker.  It
 invokes the type-rule check visitor on every Java source file being
-compiled, and provides a simple API, \href{http://types.cs.washington.edu/dev/checker-framework/api/org/checkerframework/framework/source/SourceChecker.html#report-org.checkerframework.framework.source.Result-java.lang.Object-}{\<report>}, to issue
+compiled, and provides a simple API, \refmethod{framework/source}{SourceChecker}{report}{-org.checkerframework.framework.source.Result-java.lang.Object-}, to issue
 errors using the compiler error reporting mechanism.
 
 Also, the checker class follows the factory method pattern to
@@ -1137,7 +1116,7 @@ must specify the component classes for construction.
 A checker can customize the default error messages through a
 \sunjavadoc{java/util/Properties.html}{Properties}-loadable text file named
 \<messages.properties> that appears in the same directory as the checker class.
-The property file keys are the strings passed to \href{http://types.cs.washington.edu/dev/checker-framework/api/org/checkerframework/framework/source/SourceChecker.html#report-org.checkerframework.framework.source.Result-java.lang.Object-}{\<report>}
+The property file keys are the strings passed to \refmethodterse{framework/source}{SourceChecker}{report}{-org.checkerframework.framework.source.Result-java.lang.Object-}
 (like \code{type.incompatible}) and the values are the strings to be
 printed (\code{"cannot assign ..."}).
 The \<messages.properties> file only need to mention the new messages that
@@ -1150,41 +1129,69 @@ For more details about message keys, see Section~\refwithpageparen{compiler-mess
 
 \subsection{Bundling multiple checkers\label{bundling-multiple-checkers}}
 
-To run a checker, a user supplies the \<-processor> command-line option.
-There are two ways to run multiple related checkers as a unit.
+Sometimes, multiple checkers work together and should always be run
+together.  There are two different ways to bundle multiple checkers
+together, by creating an ``aggregate checker'' or a ``compound checker''.
+
 
 \begin{enumerate}
 \item
-A user can pass
-multiple \<-processor> command-line options, like:
+An aggregate checker runs multiple independent, unrelated checkers.  There
+is no communication or cooperation among them.
+
+The effect is the same as if a user passes
+multiple processors to the \<-processor> command-line option.
+
+For example, instead of a user having to run
 
 \begin{Verbatim}
-  javac -processor DistanceUnitChecker -processor SpeedUnitChecker ... files ...
+  javac -processor DistanceUnitChecker,VelocityUnitChecker,MassUnitChecker ... files ...
 \end{Verbatim}
 
 \noindent
-This is verbose, and it is also error-prone, since a user might omit one of
-several related checkers that are designed to be run together.
+the user can write
 
-\item
-You can define an aggregate checker class that combines
-multiple checkers.  Extend \refclass{framework/source}{AggregateChecker} and override
+\begin{Verbatim}
+  javac -processor MyUnitCheckers ... files ...
+\end{Verbatim}
+
+\noindent
+if you define an aggregate checker class.  Extend \refclass{framework/source}{AggregateChecker} and override
 the \<getSupportedTypeCheckers> method, like the following:
 
 \begin{Verbatim}
-  public class UnitCheckers extends AggregateChecker {
+  public class MyUnitCheckers extends AggregateChecker {
     protected Collection<Class<? extends SourceChecker>> getSupportedCheckers() {
-      return Arrays.asList(DistanceUnitChecker.class, SpeedUnitChecker.class);
+      return Arrays.asList(DistanceUnitChecker.class,
+                           VelocityUnitChecker.class,
+                           MassUnitChecker.class);
     }
   }
 \end{Verbatim}
 
-\noindent
-Now, a user can pass a single \<-processor> argument on the command line:
+% This is the *only* example, as of July 2015.
+An example of an aggregate checker is \refclass{checker/i18n}{I18nChecker}
+(see \chapterpageref{i18n-checker}), which consists of
+\refclass{checker/i18n}{I18nSubchecker} and
+\refclass{checker/i18n}{LocalizableKeyChecker}.
 
-\begin{Verbatim}
-  javac -processor UnitCheckers ... files ...
-\end{Verbatim}
+\item
+Use a compound checker to express dependencies among checkers.  Suppose it
+only makes sense to run MyChecker if MyHelperChecker has already been run;
+that might be the case if MyHelperChecker computes some information that
+MyChecker needs to use.
+
+Override 
+\<MyChecker.\refmethodterse{common/basetype}{BaseTypeChecker}{getImmediateSubcheckerClasses}{--}>
+to return a list of the checkers that MyChecker depends on.  Every one of
+them will be run before MyChecker is run.  One of MyChecker's subcheckers
+may itself be a compound checker, and multiple checkers may declare a
+dependence on the same subchecker.  The Checker Framework will run each
+checker once, and in an order consistent with all the dependences.
+
+A checker obtains information from its subcheckers (those that ran before
+it) by querying their \refclass{framework/type}{AnnotatedTypeFactory} to
+determine the types of variables.
 
 \end{enumerate}
 
@@ -1252,60 +1259,10 @@ required parsing of the option.
 
 \section{Testing framework\label{testing-framework}}
 
-The Checker Framework comes with a testing framework that is used for
-testing the distributed checkers.
-It is easy to use this testing framework to ensure correctness of your
-checker!
-
-You first need to provide a subclass of
-\code{ParameterizedCheckerTest}
-that determines the checker to use and all command-line options that
-should be provided.
-This class can be run as a JUnit test runner.
-Note that you always need to use the
-\code{-Anomsgtext} option to suppress the substitution of message keys
-by human-readable values.
-See the test setup classes in directory \code{tests/src/tests/} for examples.
-
-Locate all your test cases in a subdirectory of the \code{tests}
-directory.
-The individual test cases are normal Java files that use stylized
-comments to indicate expected error messages.
-For example, consider this test case from the Nullness Checker:
-
-\begin{Verbatim}
-  //:: error: (dereference.of.nullable)
-  s.toString();
-\end{Verbatim}
-
-An expected error message is introduced by the \code{//::} comment.
-The next token is either \code{error:} or \code{warning:},
-distinguishing what kind of message is expected.
-Finally, the message key for the expected message is given.
-
-Multiple expected messages can be given using the "//:: A :: B :: C"
-syntax.
-This example expects both an error and a warning from the same line of code:
-
-\begin{Verbatim}
-  @Regex String s1 = null;
-  //:: error: (assignment.type.incompatible) :: warning: (cast.unsafe)
-  @Regex(3) String s2 = (@Regex(2) String) s;
-\end{Verbatim}
-
-As an alternative, expected errors can be specified in a separate file
-using the \code{.out} file extension.
-These files are of the following format:
-
-\begin{Verbatim}
-:19: error: (dereference.of.nullable)
-\end{Verbatim}
-
-The number between the colons is the line number of the expected error
-message.
-This format is a lot harder to maintain and we suggest using the
-in-line comment format.
-
+The Checker Framework provides a convenient way to write tests for your
+checker.
+% Don't repeat the information here, to prevent them from getting out of sync.
+It is extensively documented in file \<checker-framework/checker/tests/README>.
 
 
 \section{Debugging options\label{debugging-options}}
@@ -1313,6 +1270,7 @@ in-line comment format.
 The Checker Framework provides debugging options that can be helpful when
 writing a checker. These are provided via the standard \code{javac} ``\code{-A}''
 switch, which is used to pass options to an annotation processor.
+
 
 \subsection{Amount of detail in messages\label{debugging-options-detail}}
 
@@ -1322,7 +1280,7 @@ qualifiers like \code{@Unqualified} which are usually not shown.
 (Use the \code{@InvisibleQualifier} meta-annotation on a qualifier to hide it.)
 
 \item \code{-Adetailedmsgtext}: Output error/warning messages in a
-  stylyized format that is easy for tools to parse.  This is useful for
+  stylized format that is easy for tools to parse.  This is useful for
   tools that run the Checker Framework and parse its output, such as IDE
   plugins.  See the source code of \<SourceChecker.java> for details about
   the format.
@@ -1451,11 +1409,11 @@ java -jar $CHECKERFRAMEWORK/framework/dist/framework.jar \
 % TODO: show example -AprintErrorStack usage. Update text above to
 % refer to it.
 
-% $ javac -processor org.checkerframework.checker.fenum.FenumChecker IdentityArrayList.java 
+% $ javac -processor org.checkerframework.checker.fenum.FenumChecker IdentityArrayList.java
 % error: GraphQualifierHierarchy found an unqualified type.  Please ensure that your implicit rules cover all cases and/or use a @DefaulQualifierInHierarchy annotation.
 % 1 error
 
-% $ javac -processor org.checkerframework.checker.fenum.FenumChecker -AprintErrorStack IdentityArrayList.java 
+% $ javac -processor org.checkerframework.checker.fenum.FenumChecker -AprintErrorStack IdentityArrayList.java
 %% error: GraphQualifierHierarchy found an unqualified type.  Please ensure that your implicit rules cover all cases and/or use a @DefaulQualifierInHierarchy annotation.
 %%   checkers.util.GraphQualifierHierarchy.checkAnnoInGraph(GraphQualifierHierarchy.java:253)
 %%   checkers.util.GraphQualifierHierarchy.isSubtype(GraphQualifierHierarchy.java:243)
@@ -1568,10 +1526,10 @@ following sections:
   This section includes descriptions of the annotations with links to the
   Javadoc.  Separate type annotations from declaration annotations, and put
   any type annotations that a programmer may not write (they are only used
-  internaally by the implementation) last within variety of annotation.
+  internally by the implementation) last within variety of annotation.
 
   Draw a diagram of the type hierarchy.  A textual description of
-  the hieraarchy is not sufficient; the diagram really helps readers to
+  the hierarchy is not sufficient; the diagram really helps readers to
   understand the system.
 
   The Javadoc for the annotations deserves the same care as the manual
@@ -1580,6 +1538,9 @@ following sections:
   describes the checker; see \refclass{javacutil/dist}{ManualTaglet}.
 \item[Section: What the Belly Rub Checker checks]
   This section gives more details about when an error is issued, with examples.
+  This section may be omitted if the checker does not contain special
+  type-checking rules --- that is, if the checker only enforces the usual
+  Java subtyping rules.
 \item[Section: Examples]
   Code examples.
 \end{description}
@@ -1597,7 +1558,7 @@ Section~\ref{type-refinement-runtime-tests} (both of these lists appear in
 the same order as the manual chapters, to help us notice if anything is
 missing).
 
-Every chapter and (sub)*section should have a label defined \emph{within} the 
+Every chapter and (sub)*section should have a label defined \emph{within} the
 \verb|\section| command.  Section labels should start with the checker
 name (as in \verb|\label{bellyrub-examples}|) and not with ``\<sec:>''.
 These conventions are for the benefit of the Hevea program that produces
@@ -1607,6 +1568,9 @@ Don't forget to write Javadoc for any annotations that the checker uses.
 That is part of the documentation and is the first thing that many users
 may see.  Also ensure that the Javadoc links back to the manual, using the
 \<@checker\_framework.manual> custom Javadoc tag.
+
+You should also integrate your new checker with the Eclipse plugin.
+% TODO: document how to do that.
 
 
 \section{javac implementation survival guide\label{javac-tips}}
@@ -1631,7 +1595,7 @@ The compiler uses and exposes three hierarchies to model the Java
 source code and classfiles.
 
 
-\subsubsection{Types - Java Language Model API\label{javac-types}}
+\subsubsection{Types --- Java Language Model API\label{javac-types}}
 
 A \refModelclass{type}{TypeMirror} represents a Java type.
 % Java declaration, statement, or expression.
@@ -1651,7 +1615,7 @@ associated with the type.
 The Checker Framework and the checkers use the types API extensively.
 
 
-\subsubsection{Elements - Java Language Model API\label{javac-elements}}
+\subsubsection{Elements --- Java Language Model API\label{javac-elements}}
 
 An \refModelclass{element}{Element} represents a potentially-public
 declaration that can be accessed from elsewhere:  classes, interfaces, methods, constructors, and
@@ -1674,7 +1638,7 @@ Example: retrieve declaration annotations, check variable
 modifiers (e.g., \code{strictfp}, \code{synchronized})
 
 
-\subsubsection{Trees - Compiler Tree API\label{javac-trees}}
+\subsubsection{Trees --- Compiler Tree API\label{javac-trees}}
 
 A \refTreeclass{tree}{Tree} represents a syntactic unit in the source code,
 like a method declaration, statement, block, \<for> loop, etc. Trees only
@@ -1709,7 +1673,7 @@ The compiler and the Checker Framework use the visitor pattern
 extensively. For example, visitors are used to traverse the source tree
 (\refclass{common/basetype}{BaseTypeVisitor} extends
 \refTreeclass{util}{TreePathScanner}) and for type
-checking (\refclass{framework/type}{TreeAnnotator} implements
+checking (\refclass{framework/type/treeannotator}{TreeAnnotator} implements
 \refTreeclass{tree}{TreeVisitor}).
 
 \emph{Utility classes}:
@@ -1758,7 +1722,7 @@ newcomer, and its documentation is a bit sparse. The Checker Framework
 aims to abstract a lot of these complexities.
 You do not have to understand the implementation of javac to
 build powerful and useful checkers.
-Beyond this document, 
+Beyond this document,
 other useful resources include the Java Infrastructure
 Developer's guide at
 \url{http://wiki.netbeans.org/Java_DevelopersGuide} and the compiler
@@ -1807,7 +1771,7 @@ without warnings or errors.
 % LocalWords:  QualifierHierarchy QualifierRoot createQualifierHierarchy util
 % LocalWords:  createTypeHierarchy QReadOnly ImplicitFor treeClasses TypeMirror
 % LocalWords:  LiteralTree ExpressionTree typeClasses annotateImplicit nullable
-% LocalWords:  TypeQualifiers getSupportedTypeQualifiers FooChecker nullness
+% LocalWords:  TypeQualifiers createSupportedTypeQualifiers FooChecker nullness
 % LocalWords:  FooVisitor FooAnnotatedTypeFactory basicstyle InterningVisitor
 % LocalWords:  InterningAnnotatedTypeFactory QualifierDefaults TypeKind getKind
 % LocalWords:  setAbsoluteDefaults PolymorphicQualifier TreeVisitor subnodes
@@ -1822,10 +1786,21 @@ without warnings or errors.
 % LocalWords:  AggregateChecker getSupportedTypeCheckers Uninterned sourcepath
 % LocalWords:  DefaultQualifier bytecode NullType strictfp ClassTree TypesUtils
 % LocalWords:  ForEachTree ElementKind TreeAnnotator TreeUtils ElementUtils ecj
-% LocalWords:  AnnotatedTypes AbstractTypeProcessor gcj hardcoding jsr
+% LocalWords:  AnnotatedTypes AbstractTypeProcessor gcj hardcoding jsr api
 % LocalWords:  typeProcess getSupportedSourceVersion fenum classpath astub
 %%  LocalWords:  addAbsoluteDefault BaseAnnotatedTypeFactory superclasses
 %%  LocalWords:  SupportedOptions AprintAllQualifiers InvisibleQualifier
 %%  LocalWords:  Adetailedmsgtext AprintErrorStack Aignorejdkastub Astubs
-%%  LocalWords:  Anocheckjdk AstubDebug Aflowdotdir AresourceStats
-%%  LocalWords:  classfiles
+%%  LocalWords:  Anocheckjdk AstubDebug Aflowdotdir AresourceStats Regex
+%%  LocalWords:  classfiles CHECKERFRAMEWORK RegexUtil asRegex myString
+%%  LocalWords:  myInt CFAbstractTransfer RegexTransfer CFAbstractAnalysis
+%%  LocalWords:  createTransferFunction RegexAnalysis createFlowAnalysis
+%%  LocalWords:  EqualToNode LeftShiftNode VariableDeclarationNode myvar
+%%  LocalWords:  MethodInvocationNode visitMethodInvocation TransferResult
+%%  LocalWords:  RegexUtils LockTransfer FormatterTransfer CFValue argfile
+%%  LocalWords:  RegexTransfer's newResultValue subcheckers taglet tex XXX
+%%  LocalWords:  ParameterizedCheckerTest AoutputArgsToFile ManualTaglet
+%%  LocalWords:  Hevea Hitchhiker's compilermsgs args Poly MyTypeSystem
+%%  LocalWords:  I18nChecker i18n I18nSubchecker LocalizableKeyChecker
+%%  LocalWords:  MyChecker MyHelperChecker getImmediateSubcheckerClasses
+%%  LocalWords:  MyChecker's subchecker plugins

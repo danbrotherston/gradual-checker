@@ -10,14 +10,12 @@ import org.checkerframework.common.subtyping.SubtypingChecker;
 import org.checkerframework.common.value.ValueChecker;
 import org.checkerframework.eclipse.util.PluginUtil;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.URL;
 import java.util.*;
 
 import org.checkerframework.framework.source.SourceChecker;
 import org.checkerframework.checker.fenum.FenumChecker;
 import org.checkerframework.checker.formatter.FormatterChecker;
+import org.checkerframework.checker.i18nformatter.I18nFormatterChecker;
 import org.checkerframework.checker.i18n.I18nChecker;
 import org.checkerframework.checker.interning.InterningChecker;
 import org.checkerframework.checker.javari.JavariChecker;
@@ -30,9 +28,9 @@ import org.checkerframework.checker.tainting.TaintingChecker;
 /**
  * Stores information that describes a particular checker such as its label, the
  * class to run, or the quals path that is associate with it.
- * 
+ *
  * @author asumu
- * 
+ *
  */
 public class CheckerInfo
 {
@@ -73,19 +71,22 @@ public class CheckerInfo
                 new CheckerInfo("Regex Checker",     RegexChecker.class),
 
                 new CheckerInfo("Format String Checker", FormatterChecker.class),
+                new CheckerInfo("I18n Format String Checker", I18nFormatterChecker.class),
+
                 new CheckerInfo("Property File Checker", PropertyKeyChecker.class),
+                new CheckerInfo("I18n Checker",     I18nChecker.class),
                 new CheckerInfo("Signature Checker",     SignatureChecker.class),
 
                 new CheckerInfo("GUI Effect Checker", GuiEffectChecker.class),
                 new CheckerInfo("Units Checker",      UnitsChecker.class),
+
+                new CheckerInfo("Constant Value Checker", ValueChecker.class),
                 new CheckerInfo("Aliasing Checker",      AliasingChecker.class),
                 new CheckerInfo("Linear Checker",     LinearChecker.class),
 
                 new CheckerInfo("IGJ Immutability Checker",    IGJChecker.class),
                 new CheckerInfo("Javari Immutability Checker", JavariChecker.class),
-                new CheckerInfo("Subtyping Checker",           SubtypingChecker.class, null),
-
-                new CheckerInfo("Constant Value Checker", ValueChecker.class)
+                new CheckerInfo("Subtyping Checker",           SubtypingChecker.class, null)
             );
 
             final Map<String, CheckerInfo> modifiableCheckers = new LinkedHashMap<String, CheckerInfo>();
@@ -126,7 +127,7 @@ public class CheckerInfo
 
     /**
      * Sets the name and processor accordingly.
-     * 
+     *
      * @param label
      * @param checker
      */
@@ -151,7 +152,7 @@ public class CheckerInfo
 
     /**
      * Gets the canonical class name for running the checker.
-     * 
+     *
      * @return the class name
      */
     public String getClassPath()
@@ -161,7 +162,7 @@ public class CheckerInfo
 
     /**
      * Get the label for this checker.
-     * 
+     *
      * @return the label name
      */
     public String getLabel()
@@ -171,7 +172,7 @@ public class CheckerInfo
 
     /**
      * Get the quals path for this checker.
-     * 
+     *
      * @return the quals path
      */
     public String getQualsPath() {

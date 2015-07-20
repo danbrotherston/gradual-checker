@@ -7,8 +7,8 @@ guarantee enables a programmer to prevent errors from occurring when a
 program is run.  See Section~\ref{nullness-checks} for more details about
 the guarantee and what is checked.
 
-The most important annotations supported by the Nullness Checker are 
-\refqualclass{checker/nullness/qual}{NonNull} and 
+The most important annotations supported by the Nullness Checker are
+\refqualclass{checker/nullness/qual}{NonNull} and
 \refqualclass{checker/nullness/qual}{Nullable}.
 \refqualclass{checker/nullness/qual}{NonNull} is rarely written, because it is
 the default.  All of the annotations are explained in
@@ -23,7 +23,7 @@ The NullnessChecker is actually an ensemble of three pluggable
 type-checkers that work together: the Nullness Checker proper (which is the
 main focus of this chapter), the Initialization Checker
 (Section~\ref{initialization-checker}), and the Map Key Checker
-(Section~\ref{map-key-checker}).
+(\chapterpageref{map-key-checker}).
 Their type hierarchies are completely independent, but they work together
 to provide precise nullness checking.
 
@@ -73,7 +73,7 @@ Parameter passing and return values are checked analogously to assignments.
 The Nullness Checker also checks the correctness, and correct use, of
 rawness annotations for checking initialization (see
 Section~\ref{initialization-rawness-checker}) and of map key annotations (see
-Section~\ref{map-key-checker}).
+\chapterpageref{map-key-checker}).
 
 
 The checker performs additional checks if certain \code{-Alint}
@@ -90,7 +90,7 @@ command-line option.)
   guaranteed to be non-null, as in \code{("m" == null)}.  Such a check is
   unnecessary and might indicate a programmer error or misunderstanding.
   The lint option is disabled by default because sometimes such checks are
-  part of ordinary defensive programming.  
+  part of ordinary defensive programming.
 
 \item
   \label{lint-uninitialized-item}%
@@ -105,6 +105,15 @@ command-line option.)
   that fields of \refqualclass{checker/nullness/qual}{NonNull} type are
   initialized --- such initialization is mandatory, not optional.
 
+\item
+  \label{lint-nonnullarraycomponents-item}%
+  If you supply the \code{-Alint=forbidnonnullarraycomponents} command-line
+  option, then the checker warns if it encounters an array creation
+  with a non-null component type.
+  See Section~\ref{nullness-arrays} for a discussion.
+  % TODO: this option is temporary and the sound option
+  % should become the default.
+
 \end{enumerate}
 
 
@@ -112,7 +121,7 @@ command-line option.)
 
 The Nullness Checker uses three separate type hierarchies:  one for nullness,
 one for rawness (Section~\ref{initialization-rawness-checker}),
-and one for map keys (Section~\ref{map-key-checker})
+and one for map keys (\chapterpageref{map-key-checker})
 The Nullness Checker has four varieties of annotations:  nullness
 type qualifiers, nullness method annotations, rawness type qualifiers, and
 map key type
@@ -167,7 +176,7 @@ The nullness hierarchy contains these qualifiers:
 
   It is permitted to initialize a MonotonicNonNull field to null, but the
   field may not be assigned to null anywhere else in the program.  If you
-  supply the \<noInitForMonotonicNonNull> lint flag (for example, supply 
+  supply the \<noInitForMonotonicNonNull> lint flag (for example, supply
   \<-Alint=noInitForMonotonicNonNull> on the command line), then
   @MonotonicNonNull fields are not allowed to have initializers.
 
@@ -190,7 +199,7 @@ most type qualifiers, because the default annotation
 (Section~\ref{null-defaults}) is usually correct.
 The Nullness Checker verifies three type hierarchies:  this one for
 nullness, one for initialization (Section~\ref{initialization-checker}),
-and one for map keys (Section~\ref{map-key-checker}).}
+and one for map keys (\chapterpageref{map-key-checker}).}
 \label{fig-nullness-hierarchy}
 \end{figure}
 
@@ -253,18 +262,33 @@ details, see Section~\ref{initialization-rawness-checker}.
 
 \subsection{Map key qualifiers\label{map-key-qualifiers}}
 
-The Nullness Checker invokes a Map Key Checker, whose annotation,
-\refqualclass{checker/nullness/qual}{KeyFor}, indicates that
-a value is a key for a given map.  This indicates whether
-\code{map.containsKey(value)} would evaluate to \code{true}.
-
 \begin{description}
 \item[\refqualclass{checker/nullness/qual}{KeyFor}]
 \end{description}
+    indicates that a value is a key for a given map --- that is, indicates
+    whether \code{map.containsKey(value)} would evaluate to \code{true}.
 
-Use of this annotation can help you to type-check more code.  For details,
-see Section~\ref{map-key-checker}.
-
+This annotation is checked by a Map Key Checker
+(\chapterpageref{map-key-checker}) that the Nullness Checker
+invokes.  The \refqualclass{checker/nullness/qual}{KeyFor} annotation enables
+the Nullness Checker to treat calls to
+\sunjavadoc{java/util/Map.html\#get-java.lang.Object-}{\code{Map.get}}
+precisely rather than assuming it may always return null.  In particular,
+a call \<mymap.get(mykey)> returns a non-\<null> value if two conditions
+are satisfied:
+\begin{enumerate}
+\item \<mymap>'s values are all non-\<null>; that is, \<mymap> was
+  declared as \code{Map<\emph{KeyType}, @NonNull \emph{ValueType}>}.  Note
+  that \<@NonNull> is the default type, so it need not be written explicitly.
+\item \<mykey> is a key in \<mymap>; that is, \<mymap.containsKey(mykey)>
+  returns \<true>.  You express this fact to the Nullness Checker by
+  declaring \<mykey> as \<@KeyFor("mymap") \emph{KeyType} mykey>.  For a
+  local variable, you generally do not need to write the
+  \<@KeyFor("mymap")> type qualifier, because it can be inferred.
+\end{enumerate}
+\noindent
+If either of these two conditions is violated, then \<mymap.get(mykey)> has
+the possibility of returning \<null>.
 
 \section{Writing nullness annotations\label{writing-nullness-annotations}}
 
@@ -284,7 +308,7 @@ Javadoc for \refclass{checker/nullness}{NullnessAnnotatedTypeFactory}.
 \subsection{Default annotation\label{null-defaults}}
 
 Unannotated references are treated as if they had a default annotation.
-The standard defaulting rule is  ``CLIMB to top'',  described in
+The standard defaulting rule is CLIMB-to-top,  described in
 Section~\ref{climb-to-top}.  Its effect is to default all types to
 \<@NonNull>, except that \<@Nullable> is used for casts, locals,
 instanceof, and implicit bounds.  A user can choose a different defaulting
@@ -323,7 +347,7 @@ rule.
 %   \code{@DefaultQualifier(value=NonNull.class,
 %     locations=\discretionary{}{}{}\{DefaultLocation\discretionary{}{}{}.ALL\_EXCEPT\_LOCALS\})}
 %   annotation.
-% 
+%
 %   The NNEL default leads to the smallest number of explicit annotations in
 %   your code~\cite{PapiACPE2008}.  It is what we recommend.  If you do not
 %   explicitly specify a different default, then NNEL is the default.
@@ -342,9 +366,9 @@ the method returns true (false, respectively).
 
 Consider \sunjavadoc{java/lang/Class.html}{java.lang.Class}.
 Method
-\sunjavadoc{java/lang/Class.html\#getComponentType()}{Class.getComponentType()}
+\sunjavadoc{java/lang/Class.html\#getComponentType--}{Class.getComponentType()}
 may return null, but it is specified to return a non-null value if
-\sunjavadoc{java/lang/Class.html\#isArray()}{Class.isArray()} is
+\sunjavadoc{java/lang/Class.html\#isArray--}{Class.isArray()} is
 true.
 You could declare this relationship in the following way (this particular
 example is already
@@ -372,9 +396,9 @@ uses such a pattern:
     }
 \end{Verbatim}
 
-Another example is \sunjavadoc{java/util/Queue.html\#peek()}{Queue.peek}
-and \sunjavadoc{java/util/Queue.html\#poll()}{Queue.poll}, which return
-non-null if \sunjavadoc{java/util/Collection.html\#isEmpty()}{isEmpty}
+Another example is \sunjavadoc{java/util/Queue.html\#peek--}{Queue.peek}
+and \sunjavadoc{java/util/Queue.html\#poll--}{Queue.poll}, which return
+non-null if \sunjavadoc{java/util/Collection.html\#isEmpty--}{isEmpty}
 returns false.
 
 The argument to \code{@EnsuresNonNullIf} is a Java expression, including method calls
@@ -403,7 +427,7 @@ each component, and then assigns the result to a non-null array:
   for (int i = 0; i < temp.length; ++i) {
     temp[i] = new Object();
   }
-  @SuppressWarnings("nullness")
+  @SuppressWarnings("nullness") // temp array is now fully initialized
   @NonNull Object [] oa = temp;
 \end{Verbatim}
 
@@ -413,6 +437,12 @@ needs to be trusted:  that is, a programmer must verify that it is safe,
 then write a \<@SuppressWarnings> annotation.
 
 % TODO: explain more aspects, give more examples.
+
+You need to supply the \code{-Alint=forbidnonnullarraycomponents}
+command-line option to enable this behavior.
+For backwards-compatibility reasons, the default behavior is currently
+to unsoundly allow non-null array components.
+% TODO: flip the default after collecting more data.
 
 
 \subsection{Run-time checks for nullness\label{nullness-runtime-checks}}
@@ -428,11 +458,11 @@ Section~\ref{type-refinement}.
 The Nullness Checker does some special checks in certain circumstances, in
 order to soundly reduce the number of warnings that it produces.
 
-For example, a call to 
-\sunjavadoc{java/lang/System.html\#getProperty(java.lang.String)}{System.getProperty(String)}
+For example, a call to
+\sunjavadoc{java/lang/System.html\#getProperty-java.lang.String-}{System.getProperty(String)}
 can return null in general, but it will not return null if the argument is
-one of the built-in-keys listed in the documentation of 
-\sunjavadoc{java/lang/System.html\#getProperties()}{System.getProperties()}.
+one of the built-in-keys listed in the documentation of
+\sunjavadoc{java/lang/System.html\#getProperties--}{System.getProperties()}.
 The Nullness Checker is aware of this fact, so you do not have to suppress
 a warning for a call like \<System.getProperty("line.separator")>.  The
 warning is still issued for code like this:
@@ -495,20 +525,29 @@ Section~\ref{null-defaults}) your code uses.  You only need one of these tools.
 
 \section{Suppressing nullness warnings\label{suppressing-warnings-nullness}}
 
+When the Nullness Checker reports a warning, it's best to change the code
+or its annotations, to eliminate the warning.  Alternately, you can
+suppress the warning, which does not change the code but prevents the
+Nullness Checker from reporting this particular warning to you.
+
 The Checker Framework supplies several ways to suppress warnings, most
 notably the \<@SuppressWarnings("nullness")> annotation (see
 Section~\ref{suppressing-warnings}).  An example use is
 
+%BEGIN LATEX
+\begin{smaller}
+%END LATEX
 \begin{Verbatim}
     // might return null
     @Nullable Object getObject(...) { ... }
 
     void myMethod() {
-      // The programmer knows that this particular call to getObject never returns
-      // null, perhaps based on the arguments or the state of other objects.
-      @SuppressWarnings("nullness")
-      @NonNull Object o2 = getObject(...);
+      @SuppressWarnings("nullness") // with argument x, getObject always returns a non-null value
+      @NonNull Object o2 = getObject(x);
 \end{Verbatim}
+%BEGIN LATEX
+\end{smaller}
+%END LATEX
 
 
 The Nullness Checker supports an additional warning suppression key,
@@ -614,7 +653,7 @@ The compiler will issue two warnings regarding violation of the semantics of
 % in the \code{NonNullExampleWithWarnings.java} file.
 
 
-\subsection{Annotated library\label{nullness-annotated-library}}
+\subsection{Example annotated source code\label{nullness-annotated-library}}
 
 Some libraries that are annotated with nullness qualifiers are:
 
@@ -624,7 +663,7 @@ The Nullness Checker itself.
 
 \item
 The
-\href{http://code.google.com/p/plume-lib/}{Plume-lib library}.
+\href{http://mernst.github.io/plume-lib/}{Plume-lib library}.
 Run the command \code{make check-nullness}.
 
 
@@ -1098,7 +1137,7 @@ initialization state is unknown.
 
 These distinctions are mostly relevant within the constructor, or for
 references to \code{this} that escape the constructor (say, by being stored
-in a field or passed to a method before initialization is complete).  
+in a field or passed to a method before initialization is complete).
 Use of initialization annotations is rare in most code.
 
 The most common use for the \<@UnderInitialization> annotation is for a
@@ -1360,7 +1399,7 @@ for an object becoming initialized.
 As soon as all of the \refqualclass{checker/nullness/qual}{NonNull} fields
 in class $C$ have been initialized, then \code{this} is treated as
 \refqualclass{checker/initialization/qual}{UnderInitialization}\code{(\emph{C})}, rather than
-treated as simply 
+treated as simply
 \refqualclass{checker/initialization/qual}{Initialized}.
 
 The example above lists 4 moments during construction.  At those moments,
@@ -1380,41 +1419,41 @@ the type of the object being constructed is:
 \end{enumerate}
 
 % \paragraph{Example}
-% 
+%
 % As another example, consider the following 12 declarations, where class A
 % extends Object and class B extends A:
-% 
+%
 % \begin{Verbatim}
 %     @UnderInitialization(Object.class) Object uOo;
 %     @Initialized Object o;
-% 
+%
 %     @UnderInitialization(Object.class) A uOa;
 %     @UnderInitialization(A.class) A uAa;
 %     @Initialized A nraA;
-% 
+%
 %     @UnderInitialization(Object.class) B uOb;
 %     @UnderInitialization(A.class) B uAb;
 %     @UnderInitialization(B.class) B uBb;
 %     @Initialized B b;
 % \end{Verbatim}
-% 
+%
 % In the following table, the type in cell C1 is a supertype of the type in
 % cell C2 if:  C1 is at least as high and at least as far left in the table
 % as C2 is.  For example, \<nraA>'s type is a supertype of those of \<rB>,
 % \<nraB>, \<nrbB>, \<a>, and \<b>.  (The empty cells on the top row are real
 % types, but are not expressible.  The other empty cells are not interesting
 % types.)
-% 
+%
 % \noindent
 % \begin{tabular}{|c|c|c|}
-% 
+%
 % \hline
 %     \<@UnderInitialization Object rO;>
 % &
-% & 
+% &
 % \\
 % \hline
-% 
+%
 %     \<@Initialized(Object.class) Object nroO;>
 % &
 % \begin{minipage}{2in}
@@ -1427,7 +1466,7 @@ the type of the object being constructed is:
 %     \<@Initialized(Object.class) B nroB;>
 % \\
 % \hline
-% 
+%
 % &
 %     \<@Initialized(A.class) A nraA;>
 % &
@@ -1439,13 +1478,13 @@ the type of the object being constructed is:
 % \end{minipage}
 % \\
 % \hline
-% 
+%
 % &
 % &
 %     \<@Initialized(B.class) B nrbB;>
 % \\
 % \hline
-% 
+%
 %     \<Object o;>
 % &
 %     \<A a;>
@@ -1482,7 +1521,7 @@ not initialize fields: \ldots''.
   \refqualclass{checker/nullness/qual}{RequiresNonNull} annotation to indicate
   which methods require the field to be non-null.
 \item
-  Initialize the field in the constructor or in the field's initializer, if 
+  Initialize the field in the constructor or in the field's initializer, if
   the field should be initialized.  (In this case, the Initialization
   Checker has found a bug!)
 
@@ -1533,7 +1572,7 @@ Section~\ref{nullness-method-annotations}.
 
 
 You may get the ``call to \ldots\ is not allowed on the given receiver''
-error even if your constructor has already initialized all the fields.  
+error even if your constructor has already initialized all the fields.
 For this code:
 
 \begin{Verbatim}
@@ -1563,7 +1602,7 @@ MyClass.java:7: error: call to helperMethod() not allowed on the given receiver.
 \begin{sloppypar}
 The reason is that even though the object under construction has had all
 the fields declared in \<MyClass> initialized, there might be a subclass of
-\<MyClass>.  Thus, the receiver of \<helperMethod> should be declared as 
+\<MyClass>.  Thus, the receiver of \<helperMethod> should be declared as
 \<@UnderInitialization(MyClass.class)>, which says that initialization has
 completed for all the \<MyClass> fields but may not have been completed
 overall.  If \<helperMethod> had been a public method that could also be called after
@@ -1620,7 +1659,7 @@ The Checker Framework supports two different initialization checkers that
 are integrated with the Nullness Checker.
 You can use whichever one you prefer.
 
-One (described in most of Section~\ref{initialization-checker}) uses the three annotations 
+One (described in most of Section~\ref{initialization-checker}) uses the three annotations
 \refqualclass{checker/initialization/qual}{Initialized},
 \refqualclass{checker/initialization/qual}{UnknownInitialization}, and
 \refqualclass{checker/initialization/qual}{UnderInitialization}.
@@ -1689,7 +1728,7 @@ The Nullness Checker uses the \refqualclass{checker/nullness/qual}{Raw} annotati
 is not yet fully initialized --- that is, not all its \<@NonNull> fields have been
 assigned.  Rawness is mostly relevant within the constructor, or for
 references to \code{this} that escape the constructor (say, by being stored
-in a field or passed to a method before initialization is complete).  
+in a field or passed to a method before initialization is complete).
 Use of rawness annotations is rare in most code.
 
 The most common use for the \<@Raw> annotation is for a helper routine that
@@ -1945,7 +1984,7 @@ When you write \refqualclass{checker/nullness/qual}{NonRaw}\code{(Foo.class) MyC
   x;}, that means that variable \<x> is initialized for \<Foo> and all its
 superclasses, and (possibly) uninitialized for all subclasses of \<Foo>.
 
-If \<A> is a direct superclass of \<B> (as in the example above), then 
+If \<A> is a direct superclass of \<B> (as in the example above), then
 \<@Raw A x;> and \<@NonRaw(B.class) A x;> are equivalent declarations.
 Neither one is the same as \<@NonRaw A x;>, which indicates that, whatever
 the actual class of the object that \<x> refers to, that object is fully
@@ -1959,7 +1998,7 @@ for an object becoming non-raw.
 As soon as all of the \refqualclass{checker/nullness/qual}{NonNull} fields
 have been initialized, then \code{this} is treated as
 \refqualclass{checker/nullness/qual}{NonRaw}\code{(\emph{typeofthis})}, rather than
-treated as simply 
+treated as simply
 \refqualclass{checker/nullness/qual}{NonRaw}.
 
 The example above lists 4 moments during construction.  At those moments,
@@ -2012,7 +2051,7 @@ types.)
 \hline
     \<@Raw Object rO;>
 &
-& 
+&
 \\
 \hline
 
@@ -2104,100 +2143,6 @@ A better name might have been ``not yet initialized'' or ``partially
 initialized'', but the term ``raw'' is now well-known.
 The \refqualclass{checker/nullness/qual}{Raw}
 annotation has nothing to do with the raw types of Java Generics.
-
-
-\section{Map Key Checker\label{map-key-checker}}
-
-The Map Key Checker uses the \refqualclass{checker/nullness/qual}{KeyFor}
-annotation to declare that a value is a key in a given map.
-
-This is relevant to the Nullness Checker because
-Java's
-\sunjavadoc{java/util/Map.html\#get(java.lang.Object)}{\code{Map.get}}
-method always has the possibility to return null, if the key is not in the
-map.
-In particular,
-a call \<mymap.get(mykey)> returns non-null if two conditions are satisfied:
-\begin{enumerate}
-\item \<mymap>'s values are all non-null; that is, \<mymap> was
-  declared as \code{Map<\emph{KeyType}, @NonNull \emph{ValueType}>}.  Note
-  that \<@NonNull> is the default type, so it need not be written explicitly.
-\item \<mykey> is a key in \<mymap>; that is, \<mymap.containsKey(mykey)>
-  returns \<true>.  You express this fact to the Nullness Checker by
-  declaring \<mykey> as \<@KeyFor("mymap") \emph{KeyType} mykey>.  For a
-  local variable, the \<@KeyFor("mymap")> type qualifier can generally be
-  inferred.
-\end{enumerate}
-\noindent
-If either of these two conditions is violated, then \<mymap.get(mykey)> has
-the possibility of returning null.
-
-
-Thus, for the Nullness Checker to guarantee that the value returned from \code{Map.get} is
-non-null, it is necessary that the map contains only non-null values,
-\emph{and} the key is in the map.
-The \refqualclass{checker/nullness/qual}{KeyFor} annotation states the latter
-property.
-
-If a type is annotated as \code{@KeyFor("m")}, then any value v with that type
-is a key in Map \<m>.  Another way of saying this is that the expression
-\code{m.containsKey(v)} evaluates to true.
-
-You usually do not have to write \code{@KeyFor} explicitly, because the
-checker infers it based on usage patterns, such as calls to
-\code{containsKey} or iteration over a map's
-\sunjavadoc{java/util/Map.html\#keySet()}{\textrm{key set}}.
-
-One usage pattern where you \emph{do} have to write \<@KeyFor> is for a
-user-managed collection that is a subset of the key set:
-
-\begin{Verbatim}
-Map<String, Object> m;
-Set<@KeyFor("m") String> matchingKeys; // keys that match some criterion
-for (@KeyFor("m") String k : matchingKeys) {
-  ... m.get(k) ...  // known to be non-null
-}
-\end{Verbatim}
-
-As with any annotation, use of the \<@KeyFor> annotation may force you to
-slightly refactor your code.  For example, this would be illegal:
-
-\begin{Verbatim}
-  Map<K,V> m;
-  Collection<@KeyFor("m") K> coll;
-  coll.add(x);   // compiler error, because the @KeyFor annotation is violated
-  m.put(x, ...);
-\end{Verbatim}
-
-\noindent
-but reordering the two calls this would be OK (no compiler error):
-
-\begin{Verbatim}
-  Map<K,V> m;
-  Collection<@KeyFor("m") K> coll;
-  m.put(x, ...);
-  coll.add(x);
-\end{Verbatim}
-
-
-Because the \<@KeyFor> type hierarchy is independent from the nullness and
-rawness hierarchies, it uses a different warning suppression key.
-You can suppress warnings related to map keys with
-\<@SuppressWarnings("keyfor")>.
-
-When you perform a run-time check for map keys, such as \<if (m.containsKey(k))
-...>, then the Map Key Checker refines the type of \<k> to
-\<@KeyFor("m")> within the scope of the test.  For more details, see
-Section~\ref{type-refinement}.
-
-% See these issues:
-% https://code.google.com/p/checker-framework/issues/detail?id=221
-% https://code.google.com/p/checker-framework/issues/detail?id=241
-% https://code.google.com/p/checker-framework/issues/detail?id=273
-Currently, the set of expressions allowed in \<@KeyFor> is less expressive
-than the expressions described in
-Section~\ref{java-expressions-as-arguments}.  The Checker Framework
-developers are working to correct this bug.
 
 
 % LocalWords:  NonNull plugin quals un NonNullExampleWithWarnings java ahndrich

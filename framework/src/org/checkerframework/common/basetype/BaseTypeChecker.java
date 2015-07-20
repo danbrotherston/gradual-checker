@@ -41,25 +41,24 @@ import com.sun.tools.javac.util.Log;
 
 /**
  * An abstract {@link SourceChecker} that provides a simple {@link
- * org.checkerframework.framework.source.SourceVisitor} implementation for typical assignment and
- * pseudo-assignment checking of annotated types.  Pseudo-assignment checks
- * include method overriding checks, parameter passing, and method invocation.
+ * org.checkerframework.framework.source.SourceVisitor} implementation that
+ * type-checks assignments, pseudo-assignments such as parameter passing
+ * and method invocation, and method overriding.
+ * <p>
  *
- * Most type-checker plug-ins will want to extend this class, instead of
- * {@link SourceChecker}.  Checkers that require annotated types but not
- * subtype checking (e.g. for testing purposes)
- * should extend {@link SourceChecker}.
- *
- * Non-type checkers (e.g. checkers to enforce coding
- * styles) should extend {@link SourceChecker} or {@link AbstractTypeProcessor}
- * directly; the Checker Framework is not designed for such checkers.
- *
+ * Most type-checker annotation processor should extend this class, instead of
+ * {@link SourceChecker}.
+ * Checkers that require annotated types but not subtype checking (e.g. for
+ * testing purposes) should extend {@link SourceChecker}.
+ * Non-type checkers (e.g. checkers to enforce coding styles) can extend
+ * {@link SourceChecker} or {@link AbstractTypeProcessor}; the Checker
+ * Framework is not designed for such checkers.
  * <p>
  *
  * It is a convention that, for a type system Foo, the checker, the visitor,
  * and the annotated type factory are named as  <i>FooChecker</i>,
  * <i>FooVisitor</i>, and <i>FooAnnotatedTypeFactory</i>.  Some factory
- * methods uses this convention to construct the appropriate classes
+ * methods use this convention to construct the appropriate classes
  * reflectively.
  *
  * <p>
@@ -84,7 +83,7 @@ import com.sun.tools.javac.util.Log;
  *
  * Subclasses must specify the set of type qualifiers they support either by
  * annotating the subclass with {@link TypeQualifiers} or by overriding the
- * {@link BaseAnnotatedTypeFactory#getSupportedTypeQualifiers()} method.
+ * {@link AnnotatedTypeFactory#createSupportedTypeQualifiers()} method.
  *
  * <p>
  *
@@ -95,8 +94,7 @@ import com.sun.tools.javac.util.Log;
  *
  * @see org.checkerframework.framework.qual
  *
-/**
- * @checker_framework.manual ##writing-compiler-interface The checker class
+ * @checker_framework.manual #writing-compiler-interface The checker class
  */
 public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeContext {
 
@@ -117,15 +115,19 @@ public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeC
     }
 
      /*
-      * The full list of subcheckers that need to be run prior to this one, in the order they need to be run in.
-      * This list will only be non-empty for the one checker that runs all other subcheckers.
-      * Do not read this field directly. Instead, retrieve it via getSubcheckers().
+      * The full list of subcheckers that need to be run prior to this one,
+      * in the order they need to be run in.  This list will only be
+      * non-empty for the one checker that runs all other subcheckers.  Do
+      * not read this field directly. Instead, retrieve it via {@link
+      * #getSubcheckers}.
+      * <p>
       *
-      * The list is initialized to null so that getSubcheckers() will know to call instantiateSubcheckers the
-      * if it is still null by the time getSubcheckers() is called. However if the current object
-      * was itself instantiated by a prior call to instantiateSubcheckers, this field will have been
-      * initialized to an empty list before getSubcheckers() is called, thereby ensuring that this
-      * list is non-empty only for one checker.
+      * If the list still null when {@link #getSubcheckers} is called, then
+      * getSubcheckers() will call {@link #instantiateSubcheckers}.
+      * However, if the current object was itself instantiated by a prior
+      * call to instantiateSubcheckers, this field will have been
+      * initialized to an empty list before getSubcheckers() is called,
+      * thereby ensuring that this list is non-empty only for one checker.
       */
      private List<BaseTypeChecker> subcheckers = null;
 
@@ -332,7 +334,7 @@ public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeC
     @SuppressWarnings("unchecked")
     public <T extends BaseTypeChecker> T getSubchecker(Class<T> checkerClass) {
         for (BaseTypeChecker checker : immediateSubcheckers) {
-            if (checker.getClass().equals(checkerClass)){
+            if (checker.getClass().equals(checkerClass)) {
                 return (T) checker;
             }
         }
@@ -368,11 +370,11 @@ public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeC
      *
      * Returns the unmodifiable list of immediate subcheckers of this checker.
      */
-    private List<BaseTypeChecker> instantiateSubcheckers(LinkedHashMap<Class<? extends BaseTypeChecker>, BaseTypeChecker> alreadyInitializedSubcheckerMap){
+    private List<BaseTypeChecker> instantiateSubcheckers(LinkedHashMap<Class<? extends BaseTypeChecker>, BaseTypeChecker> alreadyInitializedSubcheckerMap) {
         LinkedHashSet<Class<? extends BaseTypeChecker>> classesOfImmediateSubcheckers = getImmediateSubcheckerClasses();
         ArrayList<BaseTypeChecker> immediateSubcheckers = new ArrayList<BaseTypeChecker>();
 
-        for (Class<? extends BaseTypeChecker> subcheckerClass : classesOfImmediateSubcheckers){
+        for (Class<? extends BaseTypeChecker> subcheckerClass : classesOfImmediateSubcheckers) {
             BaseTypeChecker subchecker = alreadyInitializedSubcheckerMap.get(subcheckerClass);
             if (subchecker != null) {
                 // Add the already initialized subchecker to the list of immediate subcheckers so that this checker can refer to it.
@@ -386,6 +388,7 @@ public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeC
                 instance.subcheckers = Collections.unmodifiableList(new ArrayList<BaseTypeChecker>()); // Prevent the new checker from storing non-immediate subcheckers
                 immediateSubcheckers.add(instance);
                 instance.immediateSubcheckers = instance.instantiateSubcheckers(alreadyInitializedSubcheckerMap);
+                instance.setParentChecker(this);
                 alreadyInitializedSubcheckerMap.put(subcheckerClass, instance);
             } catch (Exception e) {
                 ErrorReporter.errorAbort("Could not create an instance of " + subcheckerClass);

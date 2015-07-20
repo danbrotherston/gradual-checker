@@ -4,7 +4,7 @@
 <project name="checker" default="dist" basedir=".">
 
     <description>
-        Builds the Checker Framework for the JSR 308 compiler.
+        Builds the Checker Framework.
     </description>
 
     <property file="build.${os.name}.properties"/>
@@ -22,6 +22,13 @@
     <property name="JAVA_7_HOME" value="${env.JAVA_7_HOME}" />
     <property name="JAVA_8_HOME" value="${env.JAVA_8_HOME}" />
     <property name="JAVA_9_HOME" value="${env.JAVA_9_HOME}" />
+
+    <!--
+         NOTE LT_BIN IN THE NEXT FEW TARGETS IS SOLELY FOR bin-devel/javac and Jenkins.
+         The original path to the langtools dir does not work on Jenkins.
+         This is here so we get an empty value if it is not set
+    -->
+    <property name="LT_BIN" value=""/>
 
     <condition property="jdkName" value="jdk7.jar">
         <contains string="${java.version}" substring="1.7"/>
@@ -336,7 +343,7 @@
         subdirectory fails. -->
         <javadoc sourcepath="${src}:${javacutil.loc}/${src}:${dataflow.loc}/${src}:${stubparser.loc}/${src}:${framework.loc}/${src}" destdir="${api.doc}"
                  additionalParam="-Xdoclint:all,-missing"
-                 failonerror="true" failonwarning="true"
+                 failonerror="true"
                  executable="${javadoc.bin}"
                  classpath="${build}:${javac.lib}:${javadoc.lib}:${junit.lib}"
                  excludepackagenames="org.checkerframework.framework.stub"
@@ -617,7 +624,7 @@
     </target>
 
     <target name="nullness-tests"
-            depends="jar,build-tests,nullness-base-tests,nullness-base-tests-with-asserts,nullness-concurrent-tests,nullness-skipuses-tests,nullness-skipdefs-tests,nullness-uninit-tests,nullness-uninit-tests-with-asserts,nullness-assume-assertions-are-enabled-tests,nullness-extra-tests,nullness-reflection-tests"
+            depends="jar,build-tests,nullness-base-tests,nullness-base-tests-with-asserts,nullness-concurrent-tests,nullness-skipuses-tests,nullness-skipdefs-tests,nullness-uninit-tests,nullness-uninit-tests-with-asserts,nullness-assume-assertions-are-enabled-tests,nullness-extra-tests,nullness-reflection-tests,nullness-invariantarrays-tests"
             description="Run tests for the Nullness Checker">
     </target>
 
@@ -629,7 +636,7 @@
     </target>
 
     <target name="nullness-tests-nojdk"
-            depends="jar,jdk.jar.exists,build-tests,nullness-base-tests,nullness-base-tests-with-asserts,nullness-concurrent-tests,nullness-skipuses-tests,nullness-skipdefs-tests,nullness-uninit-tests,nullness-uninit-tests-with-asserts,nullness-assume-assertions-are-enabled-tests,nullness-extra-tests-nojdk,nullness-reflection-tests"
+            depends="jar,jdk.jar.exists,build-tests,nullness-base-tests,nullness-base-tests-with-asserts,nullness-concurrent-tests,nullness-skipuses-tests,nullness-skipdefs-tests,nullness-uninit-tests,nullness-uninit-tests-with-asserts,nullness-assume-assertions-are-enabled-tests,nullness-extra-tests-nojdk,nullness-reflection-tests,nullness-invariantarrays-tests"
             description="Run tests for the Nullness Checker, WITHOUT updating jdkX.jar">
     </target>
 
@@ -657,12 +664,9 @@
 
     <target name="nullness-assume-assertions-are-enabled-tests" depends="jar,build-tests"
             description="Run uninit tests for the Nullness Checker">
-<!-- TODO: re-enable this once issue 417 is fixed; see
-https://code.google.com/p/checker-framework/issues/detail?id=416
         <antcall target="-run-tests">
             <param name="param" value="tests.NullnessAssumeAssertionsAreDisabled"/>
         </antcall>
--->
     </target>
 
     <target name="nullness-uninit-tests-with-asserts" depends="jar,build-tests"
@@ -710,7 +714,14 @@ https://code.google.com/p/checker-framework/issues/detail?id=416
         </antcall>
     </target>
 
-        <target name="nullness-reflection-tests" depends="jar,build-tests"
+    <target name="nullness-invariantarrays-tests" depends="jar,build-tests"
+            description="Run tests for the Nullness Checker using -AinvariantArrays">
+        <antcall target="-run-tests">
+            <param name="param" value="tests.NullnessInvariantArraysTest"/>
+        </antcall>
+    </target>
+
+    <target name="nullness-reflection-tests" depends="jar,build-tests"
             description="Run tests for the Nullness Checker using reflection resolution">
         <antcall target="-run-tests">
             <param name="param" value="tests.NullnessReflectionTest"/>
@@ -736,6 +747,13 @@ https://code.google.com/p/checker-framework/issues/detail?id=416
             description="Run tests for the Formatter Checker">
         <antcall target="-run-tests">
             <param name="param" value="tests.FormatterTest"/>
+        </antcall>
+    </target>
+
+    <target name="i18n-formatter-tests" depends="jar,build-tests"
+            description="Run tests for the Internationalization Formatter checker">
+        <antcall target="-run-tests">
+            <param name="param" value="tests.I18nFormatterTest"/>
         </antcall>
     </target>
 
@@ -816,7 +834,7 @@ https://code.google.com/p/checker-framework/issues/detail?id=416
 
     <target name="jtreg-tests"
             depends="-def-jtreg,jar,jtreg-tests-checkers,jtreg-tests-framework"
-            description="Run jtreg tests">
+            description="Run all jtreg tests">
     </target>
 
     <target name="-def-check">
@@ -989,7 +1007,7 @@ https://code.google.com/p/checker-framework/issues/detail?id=416
             description="Run the compiler message keys checker on the Framework">
         <antcall target="-run-checker">
             <param name="checker-name" value="org.checkerframework.checker.compilermsgs.CompilerMessagesChecker"/>
-            <param name="checker-args" value="-Awarns -AsuppressWarnings=purity -Apropfiles=${framework.loc}/src/org/checkerframework/framework/source/messages.properties:${framework.loc}/src/org/checkerframework/common/aliasing/messages.properties:./src/org/checkerframework/checker/lock/messages.properties:./src/org/checkerframework/checker/javari/messages.properties:./src/org/checkerframework/checker/interning/messages.properties:${framework.loc}/src/org/checkerframework/common/basetype/messages.properties:./src/org/checkerframework/checker/nullness/messages.properties:./src/org/checkerframework/checker/initialization/messages.properties:./src/org/checkerframework/checker/linear/messages.properties:./src/org/checkerframework/checker/regex/messages.properties:${framework.loc}/src/org/checkerframework/common/util/report/messages.properties:./src/org/checkerframework/checker/formatter/messages.properties:${framework.loc}/src/org/checkerframework/common/value/messages.properties:./src/org/checkerframework/checker/guieffect/messages.properties:${framework.loc}/src/org/checkerframework/common/reflection/messages.properties"/>
+            <param name="checker-args" value="-Awarns -AsuppressWarnings=purity -Apropfiles=${framework.loc}/src/org/checkerframework/framework/source/messages.properties:${framework.loc}/src/org/checkerframework/common/aliasing/messages.properties:./src/org/checkerframework/checker/lock/messages.properties:./src/org/checkerframework/checker/javari/messages.properties:./src/org/checkerframework/checker/interning/messages.properties:${framework.loc}/src/org/checkerframework/common/basetype/messages.properties:./src/org/checkerframework/checker/nullness/messages.properties:./src/org/checkerframework/checker/initialization/messages.properties:./src/org/checkerframework/checker/linear/messages.properties:./src/org/checkerframework/checker/regex/messages.properties:${framework.loc}/src/org/checkerframework/common/util/report/messages.properties:./src/org/checkerframework/checker/formatter/messages.properties:./src/org/checkerframework/checker/i18nformatter/messages.properties:${framework.loc}/src/org/checkerframework/common/value/messages.properties:./src/org/checkerframework/checker/guieffect/messages.properties:${framework.loc}/src/org/checkerframework/common/reflection/messages.properties"/>
         </antcall>
     </target>
 
@@ -1071,11 +1089,13 @@ https://code.google.com/p/checker-framework/issues/detail?id=416
         <exec executable="ant" failonerror="true">
             <arg line="jdk.jar"/>
             <env key="JAVA_HOME"  value="${JAVA_7_HOME}"/>
+            <env key="LT_BIN" value="${LT_BIN}"/>
         </exec>
 
         <exec executable="ant" failonerror="true">
             <arg line="jdk.jar"/>
             <env key="JAVA_HOME"  value="${JAVA_8_HOME}"/>
+            <env key="LT_BIN" value="${LT_BIN}"/>
         </exec>
 
         <!--<exec executable="ant" failonerror="true">
@@ -1099,6 +1119,7 @@ https://code.google.com/p/checker-framework/issues/detail?id=416
          <arg value="CLASSPATH=${basedir}/${build}"/>
          <arg value="-C"/>
          <arg value="jdk"/>
+         <env key="LT_BIN" value="${LT_BIN}"/>
       </exec>
       <move file="jdk/jdk.jar" tofile="jdk/${jdkName}"/>
 

@@ -1,19 +1,19 @@
 package org.checkerframework.framework.util.element;
 
-import com.sun.tools.javac.code.Attribute.TypeCompound;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.util.PluginUtil;
-import com.sun.tools.javac.code.Attribute;
-import com.sun.tools.javac.code.TargetType;
 import org.checkerframework.javacutil.ErrorReporter;
 
-import javax.lang.model.element.Element;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.checkerframework.framework.util.element.ElementAnnotationUtil.contains;
+import javax.lang.model.element.Element;
+
+import com.sun.tools.javac.code.Attribute;
+import com.sun.tools.javac.code.Attribute.TypeCompound;
+import com.sun.tools.javac.code.TargetType;
 
 /**
  * TargetedElementAnnotationApplier filters annotations for an element into 3 groups.
@@ -31,7 +31,7 @@ abstract class TargetedElementAnnotationApplier {
     /**
      * Three annotation types that may be encountered when calling getRawTypeAttributes. see sift().
      */
-    public static enum TargetClass {
+    static enum TargetClass {
         TARGETED, VALID, INVALID
     }
 
@@ -53,7 +53,7 @@ abstract class TargetedElementAnnotationApplier {
 
     /**
      * @return The TargetTypes that identify annotations that are valid but we wish to ignore.  Any annotations
-     * that have these target types will be passed to handleInvalid, providing they aren't also in annotatedTargets.
+     * that have these target types will be passed to handleValid, providing they aren't also in annotatedTargets.
      */
     protected abstract TargetType [] validTargets();
 
@@ -107,10 +107,13 @@ abstract class TargetedElementAnnotationApplier {
      *                handled by handleTargeted or handleValid
      */
     protected void handleInvalid(List<Attribute.TypeCompound> invalid) {
-        if( !invalid.isEmpty() ) {
+        if (!invalid.isEmpty()) {
             ErrorReporter.errorAbort(this.getClass().getName() + ".handleInvalid: " +
-                    "Invalid variable and element passed to extractAndApply (" + type + ", " + element +
-                    " Annos ( " + PluginUtil.join(", ", invalid) + " ) ");
+                    "Invalid variable and element passed to extractAndApply; type: " + type + "," +
+                            " element: " + element + " (kind: " + element.getKind() +
+                    "), invalid annotations: " + PluginUtil.join(", ", invalid) + "\n" +
+                    "Targeted annotations: " + PluginUtil.join(", ", annotatedTargets()) +
+                    "; Valid annotations: " + PluginUtil.join(", ", validTargets()));
         }
     }
 
@@ -122,19 +125,19 @@ abstract class TargetedElementAnnotationApplier {
      */
     protected Map<TargetClass, List<Attribute.TypeCompound>> sift(final Iterable<Attribute.TypeCompound> typeCompounds) {
 
-        final Map<TargetClass, List<Attribute.TypeCompound>> targetClassToCompound = new LinkedHashMap<>();
+        final Map<TargetClass, List<Attribute.TypeCompound>> targetClassToCompound = new EnumMap<>(TargetClass.class);
         for (TargetClass targetClass : TargetClass.values()) {
             targetClassToCompound.put(targetClass, new ArrayList<TypeCompound>());
         }
 
-        for(final Attribute.TypeCompound typeCompound : typeCompounds) {
+        for (final Attribute.TypeCompound typeCompound : typeCompounds) {
             final TargetType typeCompoundTarget = typeCompound.position.type;
             final List<Attribute.TypeCompound> destList;
 
-            if( contains(typeCompoundTarget, annotatedTargets())) {
+            if (ElementAnnotationUtil.contains(typeCompoundTarget, annotatedTargets())) {
                 destList = targetClassToCompound.get(TargetClass.TARGETED);
 
-            } else if( contains(typeCompoundTarget, validTargets())) {
+            } else if (ElementAnnotationUtil.contains(typeCompoundTarget, validTargets())) {
                 destList = targetClassToCompound.get(TargetClass.VALID);
 
             } else {
