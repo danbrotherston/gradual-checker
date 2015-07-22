@@ -277,6 +277,9 @@ import com.sun.tools.javac.util.Log;
     // org.checkerframework.framework.source.SourceChecker.shutdownHook()
     "resourceStats",
 
+    // Verbose output.
+    "verbose",
+
 })
 public abstract class SourceChecker
     extends AbstractTypeProcessor implements ErrorHandler, CFContext, OptionConfiguration {
@@ -296,6 +299,8 @@ public abstract class SourceChecker
 
     /** Used to report error messages and warnings via the compiler. */
     protected Messager messager;
+
+    protected boolean normalExit = false;
 
     /** Used as a helper for the {@link SourceVisitor}. */
     protected Trees trees;
@@ -389,7 +394,7 @@ public abstract class SourceChecker
     protected List<String> upstreamCheckerNames = null; // Includes the current checker
 
     @Override
-    public final void init(ProcessingEnvironment env) {
+    public void init(ProcessingEnvironment env) {
         super.init(env);
         // The processingEnvironment field will also be set by the superclass' init method.
         // This is used to trigger AggregateChecker's setProcessingEnvironment.
@@ -888,6 +893,7 @@ public abstract class SourceChecker
         // Visit the attributed tree.
         try {
             visitor.visit(p);
+	    this.normalExit = true;
         } catch (CheckerError ce) {
             logCheckerError(ce);
         } catch (Throwable t) {

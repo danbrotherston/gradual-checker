@@ -51,6 +51,7 @@ import org.checkerframework.framework.util.FlowExpressionParseUtil.FlowExpressio
 import org.checkerframework.framework.util.FlowExpressionParseUtil.FlowExpressionParseException;
 import org.checkerframework.framework.util.PluginUtil;
 import org.checkerframework.framework.util.QualifierPolymorphism;
+import org.checkerframework.framework.qual.Dynamic;
 import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.ElementUtils;
 import org.checkerframework.javacutil.ErrorReporter;
@@ -704,7 +705,9 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
                         flowExprContext, getCurrentPath());
 
                 // check return type of method
-                boolean booleanReturnType = TypesUtils.isBooleanType(InternalUtils.typeOf(node.getReturnType()));
+                boolean booleanReturnType = TypesUtils
+                        .isBooleanType(InternalUtils.typeOf(
+                              node.getReturnType()));
                 if (!booleanReturnType) {
                     checker.report(
                             Result.failure("contracts.conditional.postcondition.invalid.returntype"),
@@ -1900,7 +1903,18 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
                     varType.getKind(), varTypeString);
         }
 
-        boolean success = atypeFactory.getTypeHierarchy().isSubtype(valueType, varType);
+        boolean success = false;
+
+        // TODO: integrate with subtype test.
+        AnnotationMirror dyn = AnnotationUtils.fromClass(elements, Dynamic.class);
+        if (AnnotatedTypes.containsModifier(valueType, dyn)) {
+            success = dynamicCheck(valueType, varType, valueTree);
+        } else if (AnnotatedTypes.containsModifier(varType, dyn)) {
+            // Do insertion code here.
+            success = true;
+        } else {
+            success = atypeFactory.getTypeHierarchy().isSubtype(valueType, varType);
+        }
 
         // TODO: integrate with subtype test.
         if (success) {
@@ -1933,6 +1947,38 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
             checker.report(Result.failure(errorKey,
                     valueTypeString, varTypeString), valueTree);
         }
+    }
+
+    /**
+     * This method performs two functions.  A type system which supports Dynamic types
+     * must override this function.  It is invoked whenever a dynamic type is encountered
+     * in a common assignment or pseudo-assignment.  The function returns a boolean value
+     * which should match a consistency check between the provided types (one of which will
+     * be partially dynamic.  This consistency relation should have the following properties:
+     *
+     * - Reflexive
+     * - Symmetric
+     * - NOT Transitive
+     *
+     * Intuitively, a consistency check should validate that types are equal (or compatible)
+     * where they are both known, and allow dynamic parts to match any parts.  Various
+     * consistency relations were presented by Jeremy Siek and Walid Taha in their gradual
+     * typing work.  However, most simple type systems using this framework should be able to
+     * return true here for all values since types should be entirely dynamic, or entirely
+     * static.
+     *
+     * The second thing this function should do is, insert, or make provisions to insert a
+     * runtime check to validate that at runtime, a valid value for the assignment context
+     * is provided.  See the {@see GradualNullnessChecker} for examples of how to do this.
+     *
+     * @param valueType The type of value being assigned into the varType.
+     * @param varType The type of the variable being assigned to.
+     * @return Whether the types are valid under the gradual typing consistency relation.
+     */
+    protected boolean dynamicCheck(AnnotatedTypeMirror valueType,
+                                   AnnotatedTypeMirror varType,
+                                   Tree valueTree) {
+        return false;
     }
 
     protected void checkArrayInitialization(AnnotatedTypeMirror type,
@@ -2157,7 +2203,18 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
 
         treeReceiver.addAnnotations(rcv.getEffectiveAnnotations());
 
-        if (!atypeFactory.getTypeHierarchy().isSubtype(treeReceiver, methodReceiver)) {
+        AnnotationMirror dyn = AnnotationUtils.fromClass(elements, Dynamic.class);
+	boolean success = false;
+        if (AnnotatedTypes.containsModifier(treeReceiver, dyn)) {
+            success = dynamicCheck(treeReceiver, methodReceiver, node);
+        } else if (AnnotatedTypes.containsModifier(methodReceiver, dyn)) {
+            // Do insertion code here.
+            success = true;
+        } else {
+            success = atypeFactory.getTypeHierarchy().isSubtype(treeReceiver, methodReceiver);
+        }
+
+        if (!success) {
             checker.report(Result.failure("method.invocation.invalid",
                 TreeUtils.elementFromUse(node),
                 treeReceiver.toString(), methodReceiver.toString()), node);
@@ -2654,7 +2711,7 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
         private boolean checkReceiverOverride() {
             // Check the receiver type.
             // isSubtype() requires its arguments to be actual subtypes with
-            // respect to JLS, but overrider receiver is not a subtype of the
+            // respect to  JLS, but overrider receiver is not a subtype of the
             // overridden receiver.  Hence copying the annotations.
             // TODO: this will need to be improved for generic receivers.
             AnnotatedTypeMirror overriddenReceiver =
@@ -2666,7 +2723,7 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
                                 overriderMeth, overriderTyp, overriddenMeth, overriddenTyp,
                                 overrider.getReceiverType(),
                                 overridden.getReceiverType()),
-                        overriderTree);
+                                overriderTree);
                 return false;
             }
             return true;
@@ -2686,10 +2743,18 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
                 overriddenParams.remove(0);
             }
             for (int i = 0; i < overriderParams.size(); ++i) {
-                boolean success = atypeFactory.getTypeHierarchy().isSubtype(overriddenParams.get(i), overriderParams.get(i));
-                if (!success) {
-                    success = testTypevarContainment(overriddenParams.get(i), overriderParams.get(i));
-                }
+                boolean success = false;
+		AnnotationMirror dyn = AnnotationUtils.fromClass(elements, Dynamic.class);
+		if (AnnotatedTypes.containsModifier(overriddenParams.get(i), dyn) ||
+		    AnnotatedTypes.containsModifier(overriderParams.get(i), dyn)) {
+		    success = true;
+		} else {
+		    success = atypeFactory.getTypeHierarchy().isSubtype(overriddenParams.get(i), overriderParams.get(i));
+
+		    if(!success) {
+			success = testTypevarContainment(overriddenParams.get(i), overriderParams.get(i));
+		    }
+		}
 
                 checkParametersMsg(success, i, overriderParams, overriddenParams);
                 result &= success;
@@ -2711,7 +2776,8 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
                         overriderMeth, overriderTyp, index, overriderParams.get(index).toString(),
                         overriddenMeth, overriddenTyp, index, overriddenParams.get(index).toString());
             }
-            if (!success) {
+
+	    if (!success) {
                 checker.report(Result.failure(msgKey,
                                 overriderMeth, overriderTyp,
                                 overriddenMeth, overriddenTyp,
@@ -2843,6 +2909,7 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
      * Takes a set of contracts identified by their expression and annotation
      * strings and resolves them to the correct {@link Receiver} and
      * {@link AnnotationMirror}.
+     * @param method
      */
     private Set<Pair<Receiver, AnnotationMirror>> resolveContracts(
             Set<Pair<String, String>> contractSet, AnnotatedExecutableType method) {

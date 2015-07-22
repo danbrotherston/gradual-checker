@@ -25,6 +25,7 @@ import org.checkerframework.javacutil.InternalUtils;
 import org.checkerframework.javacutil.TreeUtils;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Modifier;
 import java.util.EnumSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -83,12 +84,15 @@ public class QualifierDefaults {
     private final DefaultSet absoluteDefaults = new DefaultSet();
     private final DefaultSet unannotatedDefaults = new DefaultSet();
 
+    private boolean accessibleFieldsAsUnannotated = false;
+
     /** Mapping from an Element to the source Tree of the declaration. */
     private static final int CACHE_SIZE = 300;
-    protected static final Map<Element, BoundType> elementToBoundType  = CollectionUtils.createLRUCache(CACHE_SIZE);
+    protected static final Map<Element, BoundType> elementToBoundType =
+	CollectionUtils.createLRUCache(CACHE_SIZE);
 
 
-    /**
+    /** 
      * Defaults that apply for a certain Element.
      * On the one hand this is used for caching (an earlier name for the field was
      * "qualifierCache"). It can also be used by type systems to set defaults for
@@ -122,6 +126,16 @@ public class QualifierDefaults {
      */
     public static DefaultLocation[] validLocationsForUnannotated() {
         return validUnannotatedDefaultLocations;
+    }
+
+    /**
+     * Tells the qualifier defaults system to treat accessible fields as unannotated.
+     * This is used when ensuring type safety for typed/untyped boundary to ensure
+     * that accessible fields, which may be written by any untyped code are treated
+     * as though they are unannotated.
+     */
+    public void treatAccessibleFieldsAsUnannotated() {
+	this.accessibleFieldsAsUnannotated = true;
     }
 
     /**
@@ -517,28 +531,69 @@ public class QualifierDefaults {
         for (Default def : defaults) {
             applier.apply(def);
         }
+	/*
+	if (annotationScope.toString().equals("publicField") || 
+	    annotationScope.toString().equals("bar")) {
+	    System.out.println("annotationScope: " + annotationScope);
+	    System.out.println("mirror: " + type);
+	    System.out.println("annotationScope class: " + annotationScope.getClass());
+	    System.out.println("mirror class: " + type.getClass());
+	    }*/
+	boolean isField =
+	    annotationScope != null && annotationScope.getKind() == ElementKind.FIELD;
 
-        if (unannotatedDefaults.size() > 0) {
-                // TODO: I would expect this:
-                //   atypeFactory.isFromByteCode(annotationScope)) {
-                // to work instead of the last three clauses,
-                // but it doesn't work correctly and tests fail.
-                // (That whole @FromStubFile and @FromByteCode annotation
-                // logic should be replaced by something sensible.)
-            if ((ElementUtils.isElementFromByteCode(annotationScope) &&
-                    atypeFactory.declarationFromElement(annotationScope) == null &&
-                    !atypeFactory.isFromStubFile(annotationScope)) ||
-                    !annotatedForThisChecker
-                    ) {
-                for (Default def : unannotatedDefaults) {
-                    applier.apply(def);
-                }
+	boolean isPrivateOrFinal =
+	    annotationScope != null && (annotationScope.getModifiers() != null) &&
+	    (annotationScope.getModifiers().contains(Modifier.FINAL) ||
+	     annotationScope.getModifiers().contains(Modifier.PRIVATE));
+
+	boolean isScopeAccessibleField = isField && !isPrivateOrFinal;
+
+	    /*annotationScope != null &&
+	    annotationScope.getKind() == ElementKind.FIELD &&
+	    (annotationScope.getModifiers() != null) &&
+	    !annotationScope.getModifiers().contains(Modifier.FINAL) &&
+	    !annotationScope.getModifiers().contains(Modifier.PRIVATE);*/
+
+        boolean accessibleFieldAndFieldsUnannotated =
+            isScopeAccessibleField && this.accessibleFieldsAsUnannotated;
+
+        boolean areUnannotatedDefaultsAvailable = unannotatedDefaults.size() > 0;
+
+        // TODO: I would expect this:
+        //   atypeFactory.isFromByteCode(annotationScope)) {
+        // to work instead of the last three clauses,
+        // but it doesn't work correctly and tests fail.
+        // (That whole @FromStubFile and @FromByteCode annotation
+        // logic should be replaced by something sensible.)
+        boolean elementIsBytecodeOrUnannotated =
+            ElementUtils.isElementFromByteCode(annotationScope) &&
+	      atypeFactory.declarationFromElement(annotationScope) == null  &&
+	      !atypeFactory.isFromStubFile(annotationScope) &&
+	      !annotatedForThisChecker;
+        
+        if (areUnannotatedDefaultsAvailable &&
+              (elementIsBytecodeOrUnannotated || accessibleFieldAndFieldsUnannotated)) {
+	    //System.out.println("Bytecode: " + elementIsBytecodeOrUnannotated + " and field: "
+	    //		       + accessibleFieldAndFieldsUnannotated);
+            
+            /*(untypedDefaults.size() > 0 &&
+	    ElementUtils.isElementFromByteCode(annotationScope)) ||
+	    (isScopeAccessibleField && this.accessibleFieldsAsUntyped)) {*/
+
+	    //System.out.println("In if statement");
+            for (Default def : unannotatedDefaults) {
+		// System.out.println("Apply default: " + def + " to " +
+		//                    annotationScope + " with " + type);
+                applier.apply(def);
             }
         }
-
+	//System.out.println("Type after: " + type);
+  
         for (Default def : absoluteDefaults) {
             applier.apply(def);
         }
+	//System.out.println("Type after after: " + type);
     }
 
     public static class DefaultApplierElement {

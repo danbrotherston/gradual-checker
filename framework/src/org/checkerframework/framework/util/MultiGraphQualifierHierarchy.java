@@ -95,9 +95,12 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
             Class<? extends Annotation> pqtopclass = QualifierPolymorphism.getPolymorphicQualifierTop(atypeFactory.getElementUtils(), qual);
             if (pqtopclass != null) {
                 AnnotationMirror pqtop = AnnotationUtils.fromClass(atypeFactory.getElementUtils(), pqtopclass);
-                if (QualifierPolymorphism.isPolyAllOrDynamic(qual)) {
+                if (QualifierPolymorphism.isPolyAll(qual)) {
                     // Use key null as marker for polyall
                     this.polyQualifiers.put(null, qual);
+                } else if (QualifierPolymorphism.isDynamic(qual)) {
+                    // Use key dynamic as marker for Dynamic
+                    this.polyQualifiers.put(qual, qual);
                 } else {
                     // use given top (which might be PolymorphicQualifier) as key
                     this.polyQualifiers.put(pqtop, qual);
@@ -513,6 +516,7 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
             Map<AnnotationMirror, Set<AnnotationMirror>> fullMap,
             Map<AnnotationMirror, AnnotationMirror> polyQualifiers,
             Set<AnnotationMirror> tops, Set<AnnotationMirror> bottoms) {
+
         if (polyQualifiers.isEmpty())
             return;
 
@@ -520,8 +524,10 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
             AnnotationMirror declTop = kv.getKey();
             AnnotationMirror polyQualifier = kv.getValue();
             if (declTop == null || // PolyAll
+                QualifierPolymorphism.isDynamic(declTop) || // Dynamic
                 AnnotationUtils.areSame(declTop, polymorphicQualifier)) {
                 if (declTop == null || // PolyAll
+                    QualifierPolymorphism.isDynamic(declTop) || // Dynamic
                         tops.size() == 1) { // un-ambigous single top
                     AnnotationUtils.updateMappingToImmutableSet(fullMap, polyQualifier, tops);
                     for (AnnotationMirror bottom : bottoms) {

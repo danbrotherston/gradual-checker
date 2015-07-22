@@ -1,0 +1,10 @@
+Compiled from "MethodConversionTest.java"
+public class MethodConversionTest {
+  public static void main_$safe(java.lang.String[]);
+  java.lang.Integer f_$safe(java.lang.Integer);
+  java.lang.Integer f_$maybe(java.lang.Integer);
+  public MethodConversionTest();
+  public static void main(java.lang.String[]);
+  void a();
+  java.lang.Integer f(java.lang.Integer);
+}

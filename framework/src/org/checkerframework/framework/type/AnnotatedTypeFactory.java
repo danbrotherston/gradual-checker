@@ -562,7 +562,7 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
         }
 
         if (typeQualifiersAnnotation != null) {
-	    return getSupportedTypeQualifiersFromAnnotation(typeQualifiersAnnotation);
+            return getSupportedTypeQualifiersFromAnnotation(typeQualifiersAnnotation);
         }
 
         return Collections.emptySet();
@@ -580,12 +580,12 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
      */
     protected final Set<Class<? extends Annotation>> getSupportedTypeQualifiersFromAnnotation(
            TypeQualifiers typeQualifiersAnnotation) {
-	Set<Class<? extends Annotation>> typeQualifiers = new HashSet<Class<? extends Annotation>>();
-	for (Class<? extends Annotation> qualifier : typeQualifiersAnnotation.value()) {
-	    typeQualifiers.add(qualifier);
-	}
-	
-	return Collections.unmodifiableSet(typeQualifiers);
+        Set<Class<? extends Annotation>> typeQualifiers = new HashSet<Class<? extends Annotation>>();
+        for (Class<? extends Annotation> qualifier : typeQualifiersAnnotation.value()) {
+            typeQualifiers.add(qualifier);
+        }
+        
+        return Collections.unmodifiableSet(typeQualifiers);
     }
 
     /**
@@ -750,7 +750,7 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
             postProcessClassTree((ClassTree) tree);
         }
 
-        // System.out.println("AnnotatedTypeFactory::getAnnotatedType(Tree) result: " + type);
+        // System.err.println("AnnotatedTypeFactory::getAnnotatedType(" + tree + ") result: " + type);
         return type;
     }
 
@@ -2019,14 +2019,16 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
         case ENUM_CONSTANT:
         case METHOD:
         case CONSTRUCTOR:
-            fromElt = trees.getTree(elt);
-            break;
+	    fromElt = trees.getTree(elt);
+	    //System.out.println("getting decl: " + fromElt + " from elt: " + elt);
+	    break;
         default:
             fromElt = com.sun.tools.javac.tree.TreeInfo.declarationFor((com.sun.tools.javac.code.Symbol) elt,
                     (com.sun.tools.javac.tree.JCTree) root);
+	    // 	    System.out.println("default getting decl: " + fromElt + " from elt: " + elt);
             break;
         }
-        if (shouldCache)
+        if (shouldCache && fromElt != null)
             elementToTreeCache.put(elt, fromElt);
         return fromElt;
     }

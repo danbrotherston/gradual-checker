@@ -147,13 +147,14 @@ public class DefaultTypeHierarchy extends AbstractAtmComboVisitor<Boolean, Visit
      */
     @Override
     public boolean isSubtype(final AnnotatedTypeMirror subtype, final AnnotatedTypeMirror supertype) {
-        for (final AnnotationMirror top : qualifierHierarchy.getTopAnnotations()) {
+	for (final AnnotationMirror top : qualifierHierarchy.getTopAnnotations()) {
             if (!isSubtype(subtype, supertype, top)) {
+		// System.err.println("Subtype test fails on am: " + subtype + " with: " + supertype + " and top:  " + top);
                 return false;
             }
         }
 
-        return true;
+	return true;
     }
 
     /**
@@ -305,7 +306,7 @@ public class DefaultTypeHierarchy extends AbstractAtmComboVisitor<Boolean, Visit
     protected boolean isSubtypeOfAll(final AnnotatedTypeMirror subtype,
                                      final Iterable<? extends AnnotatedTypeMirror> supertypes,
                                      final VisitHistory visited) {
-        for (final AnnotatedTypeMirror supertype : supertypes) {
+        for (final AnnotatedTypeMirror supertype : supertypes ) {
             if (!isSubtype(subtype, supertype, visited)) {
                 return false;
             }
@@ -317,7 +318,7 @@ public class DefaultTypeHierarchy extends AbstractAtmComboVisitor<Boolean, Visit
     protected boolean isSubtypeOfAny(final AnnotatedTypeMirror subtype,
                                      final Iterable<? extends AnnotatedTypeMirror> supertypes,
                                      final VisitHistory visited ) {
-        for (final AnnotatedTypeMirror supertype : supertypes) {
+        for (final AnnotatedTypeMirror supertype : supertypes ) {
             if (isSubtype(subtype, supertype, visited)) {
                 return true;
             }
@@ -495,12 +496,12 @@ public class DefaultTypeHierarchy extends AbstractAtmComboVisitor<Boolean, Visit
 
         if (subtypeRaw || supertypeRaw) {
             if (!rawnessComparer.isValidInHierarchy(subTypeArg, superTypeArg, currentTop, visited)
-              && !isContainedBy(subTypeArg, superTypeArg, visited, this.covariantTypeArgs)) {
+              && !isContainedBy(subTypeArg, superTypeArg, visited, this.covariantTypeArgs )) {
                 return false;
             }
 
         } else {
-            if (!isContainedBy(subTypeArg, superTypeArg, visited, this.covariantTypeArgs)) {
+            if (!isContainedBy(subTypeArg, superTypeArg, visited, this.covariantTypeArgs) ) {
                 return false;
             }
         }
@@ -701,7 +702,7 @@ public class DefaultTypeHierarchy extends AbstractAtmComboVisitor<Boolean, Visit
 
         }
 
-        if (AnnotatedTypes.areCorrespondingTypeVariables(checker.getProcessingEnvironment().getElementUtils(), subtype, supertype)) {
+        if (AnnotatedTypes.areCorrespondingTypeVariables(checker.getProcessingEnvironment().getElementUtils(), subtype, supertype))  {
             if (areEqualInHierarchy(subtype, supertype, currentTop)) {
                 return true;
             }

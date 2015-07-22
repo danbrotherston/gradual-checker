@@ -1,0 +1,7 @@
+Compiled from "InterfaceTest.java"
+interface IInterface {
+  public void bar_$safe(java.lang.Integer);
+  public void bar_$maybe(java.lang.Integer);
+  public abstract void foo();
+  public abstract void bar(java.lang.Integer);
+}

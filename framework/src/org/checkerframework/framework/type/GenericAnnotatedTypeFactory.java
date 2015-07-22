@@ -510,7 +510,7 @@ public abstract class GenericAnnotatedTypeFactory<
     protected IdentityHashMap<Tree, Store> regularExitStores;
 
     /**
-     * A mapping from methods to a list with all return statements and the
+     * A mapping from methods to their a list with all return statements and the
      * corresponding store.
      */
     protected IdentityHashMap<MethodTree, List<Pair<ReturnNode, TransferResult<Value, Store>>>> returnStatementStores;

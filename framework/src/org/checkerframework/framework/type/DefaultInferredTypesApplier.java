@@ -3,6 +3,7 @@ package org.checkerframework.framework.type;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedTypeVariable;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedWildcardType;
 import org.checkerframework.framework.type.visitor.AbstractAtmComboVisitor;
+import org.checkerframework.framework.util.QualifierPolymorphism;
 
 import javax.lang.model.element.AnnotationMirror;
 
@@ -72,7 +73,8 @@ public class DefaultInferredTypesApplier {
             if (inferredAnnotation == null) {
                 // We inferred "no annotation" for this hierarchy.
                 type.removeAnnotationInHierarchy(top);
-            } else {
+            } else if (!QualifierPolymorphism.isDynamic(inferredAnnotation)) {
+		// Don't flow dynamic qualifiers, don't know why I need this.
                 // We inferred an annotation.
                 AnnotationMirror present = type.getAnnotationInHierarchy(top);
                 if (present != null) {
