@@ -2028,7 +2028,7 @@ public class AnnotatedTypeFactory implements AnnotationProvider {
 	    // 	    System.out.println("default getting decl: " + fromElt + " from elt: " + elt);
             break;
         }
-        if (shouldCache && fromElt != null)
+        if (shouldCache)
             elementToTreeCache.put(elt, fromElt);
         return fromElt;
     }
