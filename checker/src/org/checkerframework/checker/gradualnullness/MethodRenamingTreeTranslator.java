@@ -231,6 +231,10 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	    newName = names.fromString(originalName + this.maybeMethodNamePostfix);
 	}
 
+        if (receiverType instanceof TypeVariable) {
+          receiverType = ((TypeVariable) receiverType).getUpperBound();
+        }
+
 	TypeElement receiverTypeElement = (TypeElement) typeutils.asElement(receiverType);
 
 	// System.out.println("In method: " + this.lastSymbolOwner);

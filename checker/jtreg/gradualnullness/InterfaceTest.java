@@ -6,11 +6,6 @@
  * @run shell InterfaceTest.sh
  */
 
-interface IInterface {
-  void foo();
-  void bar(Integer i);
-}
-
 public class InterfaceTest { //implements IInterface {
   public static void main(String [] args) {
     InterfaceTest baz = new InterfaceTest();

@@ -121,7 +121,8 @@ public class FillInTypePlaceholderTreeTranslator
     @Override
     public void visitLiteral(JCTree.JCLiteral tree) {
 	// System.out.println("treevalue: \"" + tree.getValue().toString() + "\"");
-	if (tree.getValue().toString().equals(this.stringLiteralFillInMarker)) {
+	if (tree.getValue() != null &&
+              tree.getValue().toString().equals(this.stringLiteralFillInMarker)) {
 	    if (this.argIndex < 0) {
 		assert false;
 		// We aren't processing an argument right now, so why are we seeing this

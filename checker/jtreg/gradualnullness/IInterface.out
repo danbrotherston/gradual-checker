@@ -1,4 +1,4 @@
-Compiled from "InterfaceTest.java"
+Compiled from "IInterface.java"
 interface IInterface {
   public void bar_$safe(java.lang.Integer);
   public void bar_$maybe(java.lang.Integer);

@@ -114,7 +114,7 @@ public class ConstructorRefactoringTranslator
     @Override
     public void visitClassDef(JCTree.JCClassDecl tree) {
 	// Check for classes which can't have constructors
-	if ((tree.sym.flags_field & (Flags.INTERFACE | Flags.ENUM)) != 0) {
+	if ((tree.mods.flags & (Flags.INTERFACE | Flags.ENUM)) != 0) {
 	    result = tree;
 	    return;
 	}
@@ -209,6 +209,7 @@ public class ConstructorRefactoringTranslator
 	JCTree.JCVariableDecl newParam = copier.copy(tree.params.head);
 	newParam.name = names.fromString(this.paramName);
 	newParam.vartype = markerClassTypeAnnotatedNullable;
+        newParam.mods.flags = (newParam.mods.flags & ~(Flags.VARARGS));
 
 	while (params != null && params.head != null) {
 	    newParamList.append(copier.copy(params.head));
@@ -234,7 +235,7 @@ public class ConstructorRefactoringTranslator
 
 	JCTree.JCStatement newCode = makeConstructorCall(tree);	
 
-	enterClassMember(this.currentClassDef, newConstructor);
+	// enterClassMember(this.currentClassDef, newConstructor);
 	this.newConstructors.append(newConstructor);
 
 	newConstructor.body = translate(newConstructor.body);
@@ -247,12 +248,13 @@ public class ConstructorRefactoringTranslator
      * Implement a constructor call to the new constructor.
      */
     private JCTree.JCStatement makeConstructorCall(JCTree.JCMethodDecl tree) {
-	JCTree.JCExpression constructor = maker.This(this.currentClassDef.sym.type);
+	JCTree.JCExpression constructor =// maker.This(this.currentClassDef.sym.type);
+            dotsExp("this");
 
 	ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
 	List<JCTree.JCVariableDecl> params = tree.params;
 	while (params != null && params.head != null) {
-	    args.append(maker.Ident(params.head));
+	    args.append(maker.Ident(params.head.name));
 	    params = params.tail;
 	}
 	

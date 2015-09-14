@@ -70,6 +70,7 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 		new ConstructorRefactoringTranslator(this, getProcessingEnvironment(), path);
 
 	    // System.out.println("Tree Before: " + tree);
+            methodTranslator.shouldReplaceStaticInitializer = true;
 	    tree.accept(methodTranslator);
 	    tree.accept(constructorTranslator);
 	    // System.out.println("Tree after: " + tree);
@@ -162,7 +163,8 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 	} catch (NoSuchMethodException e) {
 	    ErrorReporter.errorAbort("Invalid method configuration for runtime checks.");
 	} catch (NullPointerException e) {
-	    //Burry
+	    e.printStackTrace();
+            ErrorReporter.errorAbort("NPE: " + e.getMessage());
 	}
     }
 }

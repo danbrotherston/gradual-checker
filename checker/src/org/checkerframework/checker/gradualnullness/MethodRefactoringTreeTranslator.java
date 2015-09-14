@@ -189,7 +189,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	    (newField.mods.flags | Flags.PRIVATE | Flags.FINAL)
 	    & ~(Flags.PUBLIC | Flags.PROTECTED);
 
-	enterClassMember(this.currentClassDef, newField);
+	//enterClassMember(this.currentClassDef, newField);
 
 	return newField;
     }
@@ -218,7 +218,12 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	JCTree.JCExpression checkedArgument =
 	    maker.Apply(null, checkerFunction,
 			List.of(argument, maker.Literal(this.stringLiteralFillInMarker)));
-	return maker.TypeCast(argumentType, checkedArgument);
+	//return maker.TypeCast(argumentType, checkedArgument);
+        if (argumentType != null) {
+          return maker.TypeCast(argumentType, checkedArgument);
+        } else {
+          return checkedArgument;
+        }
     }
 
     /**
@@ -234,18 +239,21 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 
 	if (tree.getModifiers().getFlags().contains(Modifier.STATIC)) {
 	    // Static method call.
-	    selectMethod = maker.Select(dotsExp(this.currentClassDef.sym.toString()),
-					(Symbol) TreeUtils.elementFromDeclaration(tree));
+	    //selectMethod = maker.Select(dotsExp(this.currentClassDef.sym.toString()),
+	    //			(Symbol) TreeUtils.elementFromDeclaration(tree));
+            selectMethod = maker.Select(dotsExp(this.currentClassDef.sym.toString()), tree.name);
 	} else {
 	    // "This" method call.
-	    selectMethod = maker.Select(maker.This(this.currentClassDef.sym.type),
-					(Symbol) TreeUtils.elementFromDeclaration(tree));
+	    //selectMethod = maker.Select(maker.This(this.currentClassDef.sym.type),
+	    //			(Symbol) TreeUtils.elementFromDeclaration(tree));
+            selectMethod = maker.Select(dotsExp("this"), tree.name);
 	}
 
 	ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
 	List<JCTree.JCVariableDecl> params = tree.params;
 	while (params != null && params.head != null) {
-	    args.append(makeCheckedArgument(maker.Ident(params.head), params.head.sym.type));
+	    args.append(makeCheckedArgument(maker.Ident(params.head.name),
+                                            params.head.sym == null ? null : params.head.sym.type));
 	    params = params.tail;
 	}
 
@@ -277,7 +285,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
 	List<JCTree.JCVariableDecl> params = tree.params;
 	while (params != null && params.head != null) {
-	    args.append(maker.Ident(params.head));
+	    args.append(maker.Ident(params.head.name));
 	    params = params.tail;
 	}
 
@@ -321,7 +329,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	    }*/
 
 	// attr.attribStat(newMethod, enter.getClassEnv(this.currentClassDef.sym));
-	enterClassMember(this.currentClassDef, newMethod);
+	// enterClassMember(this.currentClassDef, newMethod);
 	this.newMethods.append(newMethod);
 
 	return newMethod;
@@ -343,7 +351,8 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 
 	JCTree.JCExpression checkInvocation =
 	    maker.Apply(null, selectCheckMethod,
-			List.of(maker.This(this.currentClassDef.sym.type)));
+			//List.of(maker.This(this.currentClassDef.sym.type)));
+                        List.of(dotsExp("this")));
 
 	JCTree.JCStatement ifPart = makeMethodCall(safeMethod);
 	JCTree.JCStatement elsePart = makeMethodCall(normalMethod);

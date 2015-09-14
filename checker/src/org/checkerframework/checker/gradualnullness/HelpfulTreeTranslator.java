@@ -276,6 +276,7 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
             meth = MemberEnter.class.getDeclaredMethod("memberEnter", JCTree.class, Env.class);
         } catch (NoSuchMethodException e) {
             System.out.println("*** reflection error!");
+            throw new RuntimeException(e);
         }
         meth.setAccessible(true);
         Object[] args = {member, enter.getClassEnv(class_.sym)};
@@ -283,8 +284,10 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
             meth.invoke(memberEnter, args);
         } catch (IllegalAccessException e) {
             System.out.println("*** reflection error!");
+            throw new RuntimeException(e);
         } catch (InvocationTargetException e) {
             System.out.println("*** reflection error!");
+            throw new RuntimeException(e);
         }
     }
 
@@ -296,6 +299,7 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
             meth = Attr.class.getDeclaredMethod("attribExpr", JCTree.class, Env.class);
         } catch (NoSuchMethodException e) {
             System.out.println("*** reflection error!");
+            throw new RuntimeException(e);
         }
         meth.setAccessible(true);
         Object[] args = {expr, env};
@@ -304,8 +308,10 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
             ret = meth.invoke(attr, args);
         } catch (IllegalAccessException e) {
             System.out.println("*** reflection error!");
+            throw new RuntimeException(e);
         } catch (InvocationTargetException e) {
             System.out.println("*** reflection error!");
+            throw new RuntimeException(e);
         }
         return (Type)ret;
     }
@@ -418,8 +424,8 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
                         block,
                         null
                     );
-                    enterClassMember(class_, initMeth);
-                    attr.attribStat(initMeth, enter.getClassEnv(class_.sym));
+                    // enterClassMember(class_, initMeth);
+                    // attr.attribStat(initMeth, enter.getClassEnv(class_.sym));
 
                     outDefs = outDefs.append(initMeth);
 
@@ -456,10 +462,15 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
         super.visitMethodDef(node);
         visitingScopes.pop();
     }
+
+    public boolean shouldReplaceStaticInitializer = false;
+
     @Override
     public void visitClassDef(JCTree.JCClassDecl node) {
         // Get rid of static initializers with local variables.
-        replaceStaticInitializer(node);
+        if (this.shouldReplaceStaticInitializer) {
+            //replaceStaticInitializer(node);
+        }
 
         visitingScopes.push(node);
         super.visitClassDef(node);
