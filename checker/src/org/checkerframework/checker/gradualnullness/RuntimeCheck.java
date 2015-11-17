@@ -26,9 +26,12 @@ public class RuntimeCheck {
 	try {
 	    clazz.getDeclaredField(RuntimeCheck.MARKER_FIELD_NAME);
 	} catch (NoSuchFieldException e) {
+	    System.err.println("Returning false: " + clazz);
+	    System.err.println("Fields: " + clazz.getDeclaredFields());
 	    return false;
 	}
 
+	System.err.println("Returning true");
 	return true;
     }
 }

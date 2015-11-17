@@ -110,14 +110,28 @@ public class RuntimeCheckTreeTranslator extends ReplacingTreeTranslator {
 	    if (statementToReplace.getLeaf() instanceof JCTree.JCVariableDecl) {
 		// Build a runtime check.  VarDecls must always be contained within a JCBlock
 		// for valid java programs so we know its parent will be a JCBlock
+		System.err.println("Expr: " + location.getValue().getKey());
+		System.err.println("Var Decl: " + statementToReplace.getLeaf());
+		System.err.println("Block: " + statementToReplace.getParentPath().getLeaf());
+
+		JCTree.JCExpression expression = (JCTree.JCExpression) location.getValue().getKey();
+		JCTree.JCVariableDecl varDecl = (JCTree.JCVariableDecl) statementToReplace.getLeaf();
+		TreePath statementBlock = statementToReplace.getParentPath();
+		TreePath parentStatement = statementToReplace;
+		
+		// Since the statement could be part of a compound statement other than a block,
+		// such as a component of a for loop.
+		while (!(statementBlock.getLeaf() instanceof JCTree.JCBlock)) {
+		    parentStatement = statementBlock;
+		    statementBlock = statementBlock.getParentPath();
+		}
+
+		JCTree.JCBlock block = (JCTree.JCBlock) (statementBlock.getLeaf());
 		Map.Entry<JCTree, JCTree> check =
-		    checkBuilder.buildVarDeclRuntimeCheck((JCTree.JCExpression)
-							  location.getValue().getKey(),
-							  (JCTree.JCVariableDecl)
-							  statementToReplace.getLeaf(),
-							  (JCTree.JCBlock)
-							  statementToReplace.getParentPath().getLeaf(),
-							  statementToReplace,
+		    checkBuilder.buildVarDeclRuntimeCheck(expression,
+							  varDecl,
+							  block,
+							  parentStatement,
 							  location.getValue().getValue(),
 							  location.getKey());
 

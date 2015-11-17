@@ -195,21 +195,21 @@ public class ConstructorRefactoringTranslator
 	    maker.AnnotatedType(List.of(nullableAnnotation),
 				maker.Type(this.getMarkerClassType()));
 
-	/*	JCTree.JCVariableDecl newParam =
+	JCTree.JCVariableDecl newParam =
 	    maker.VarDef(maker.Modifiers(Flags.PARAMETER,
 					 List.<JCTree.JCAnnotation>nil()),
 			 names.fromString(this.paramName),
 			 markerClassTypeAnnotatedNullable,
-			 null);*/
+			 null);
 
 	ListBuffer<JCTree.JCVariableDecl> newParamList = new ListBuffer<JCTree.JCVariableDecl>();
 	List<JCTree.JCVariableDecl> params = tree.params;
 	TreeCopier<Void> copier = new TreeCopier<Void>(maker);
 
-	JCTree.JCVariableDecl newParam = copier.copy(tree.params.head);
+	/*JCTree.JCVariableDecl newParam = copier.copy(tree.params.head);
 	newParam.name = names.fromString(this.paramName);
 	newParam.vartype = markerClassTypeAnnotatedNullable;
-        newParam.mods.flags = (newParam.mods.flags & ~(Flags.VARARGS));
+        newParam.mods.flags = (newParam.mods.flags & ~(Flags.VARARGS));*/
 
 	while (params != null && params.head != null) {
 	    newParamList.append(copier.copy(params.head));

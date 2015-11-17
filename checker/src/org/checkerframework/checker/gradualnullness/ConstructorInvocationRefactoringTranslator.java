@@ -118,7 +118,11 @@ public class ConstructorInvocationRefactoringTranslator
      */
     @Override
     public void visitApply(JCTree.JCMethodInvocation tree) {
-	result = renameMethodApplication(tree);
+        if (tree.toString().contains("SafeConstructorMarkerDummy")) {
+            result  = tree;
+        } else {
+            result = renameMethodApplication(tree);
+        }
     }
 
     @Override
@@ -143,6 +147,25 @@ public class ConstructorInvocationRefactoringTranslator
 	//	System.out.println("Tree symbol: " + tree.constructor);
 	//	System.out.println("Tree Type: " + tree.constructorType);
 	//	System.out.println("Tree Type Symbol: " + tree.constructorType.tsym);
+        
+        if (tree.constructor.owner.asType() instanceof DeclaredType) {
+            Element constructedClass = ((DeclaredType) tree.constructor.owner.asType()).asElement();
+            if (constructedClass != null) {
+                boolean found = false;
+                for (Element elem : constructedClass.getEnclosedElements()) {
+                    if (elem.toString().contains("$isTypeCheckedMarker")) {
+                        found = true;
+                    }
+                }
+
+                if (!found) {
+                     return;
+                }
+            }
+        }
+
+        if (tree.toString().contains("SafeConstructorMarkerDummy")) { return; }
+        if (tree.args == null || tree.args.head == null) { return; }
 
 	if (tree.clazz instanceof JCTree.JCIdent) {
 	    Element constructedElement = ((JCTree.JCIdent) tree.clazz).sym;

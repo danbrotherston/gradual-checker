@@ -100,12 +100,17 @@ public class GradualNullnessVisitor extends NullnessVisitor {
 
 	// Record this location to insert a runtime check.
 	if (!this.inSyntheticMethod && !this.existingCheckedValues.contains(valueTree)) {
-	    // System.err.println("Putting check location: " + getCurrentPath());
-	    // System.err.println("Putting value Tree: " + valueTree);
+	    System.err.println("Putting check location: " + getCurrentPath());
+	    System.err.println("Putting value Tree: " + valueTree);
+	    System.err.println("Class: " + valueTree.getClass());
+	    System.err.println("VarClass: " + valueTree.getClass());
 	    // Thread.dumpStack();
-	    existingCheckedValues.add(valueTree);
-	    runtimeCheckLocations.put(getCurrentPath(),
-				  new SimpleEntry<Tree, AnnotatedTypeMirror>(valueTree, varType));
+	    if (this.inMethod) {
+		System.err.println("Adding check location");
+		existingCheckedValues.add(valueTree);
+		runtimeCheckLocations.put(getCurrentPath(),
+					  new SimpleEntry<Tree, AnnotatedTypeMirror>(valueTree, varType));
+	    }
 	}
 
 	// Consistency check for nullness should always return true, any
@@ -124,26 +129,40 @@ public class GradualNullnessVisitor extends NullnessVisitor {
     public Void visitClass(ClassTree node, Void p) {
 	ClassTree prevCurrentClassTree = this.currentClassTree;
 	this.currentClassTree = node;
+	boolean prevInMethod = this.inMethod;
 
+	this.inMethod = false;
 	Void val = super.visitClass(node, p);
+	this.inMethod = prevInMethod;
 
 	this.currentClassTree = prevCurrentClassTree;
 	return val;
     }
 
+    // Track whether we are type checking code within a method or if it is static initializer code.
+    boolean inMethod = false;
+
     @Override
     public Void visitMethod(MethodTree node, Void p) {
+	boolean prevInMethod = this.inMethod;
+	this.inMethod = true;
+	//System.err.println("Visiting Method: " + node.getName().toString());
 	if (node.getName().toString().endsWith(this.maybeMethodNamePostfix) ||
 	    this.currentClassTreeContainsSafeVersionOf(node) ||
 	    this.currentClassTreeContainsSafeVersionOfConstructor(node)) {
-	    // System.out.println("Method: " + node.getName() + " is synthetic");
+	    //System.err.println("Skipping Method: " + node.getName() + " is synthetic");
 	    this.inSyntheticMethod = true;
+	    this.inMethod = prevInMethod;
+	    return null;
 	} else {
 	    // System.out.println("Method: " + node.getName() + " is not synthetic");
 	    this.inSyntheticMethod = false;
+	    //System.err.println("Now Checking method: " + node.getName().toString());
+	    Void r = super.visitMethod(node, p);
+	    this.inMethod = prevInMethod;
+	    return r;
 	}
-
-	return super.visitMethod(node, p);
+	//return super.visitMethod(node,p);
     }
 
     private boolean currentClassTreeContainsSafeVersionOfConstructor(MethodTree node) {
@@ -186,7 +205,7 @@ public class GradualNullnessVisitor extends NullnessVisitor {
 	for (Tree member : this.currentClassTree.getMembers()) {
 	    if (member instanceof MethodTree) {
 		MethodTree methodMember = (MethodTree) member;
-		// System.out.println("Checking : " + methodMember.getName());
+		// System.err.println("Checking : " + methodMember.getName());
 		// System.out.println("Newname: " + newName);
 
 		if (methodMember.getName().toString().equals(newName)) {
@@ -203,10 +222,10 @@ public class GradualNullnessVisitor extends NullnessVisitor {
 		    }
 
 		    if (allParamsMatch) {
-			// System.out.println("Matching all params");
+			// System.err.println("Matching all params");
 			return true;
 		    } else {
-			// System.out.println("Doesn't match all params");
+			// System.err.println("Doesn't match all params: " + methodMember.getName().toString());
 		    }
 		}
 	    }

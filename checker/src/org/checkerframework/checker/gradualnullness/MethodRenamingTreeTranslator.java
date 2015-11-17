@@ -9,6 +9,10 @@ import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Type;
+import com.sun.tools.javac.code.Type.AnnotatedType;
+import com.sun.tools.javac.code.Type.ArrayType;
+import com.sun.tools.javac.code.Type.ClassType;
+import com.sun.tools.javac.code.Type.TypeVar;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCClassDecl;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
@@ -132,6 +136,10 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
      * @return The renamed method application tree.
      */
     protected JCTree renameMethodApplication(JCTree.JCMethodInvocation tree) {
+        if (tree.args == null || tree.args.head == null) {
+            return tree;
+        }
+
 	JCTree.JCExpression methodSelect = tree.getMethodSelect();
 	
 	if (methodSelect instanceof JCTree.JCFieldAccess) {
@@ -232,7 +240,10 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	}
 
         if (receiverType instanceof TypeVariable) {
-          receiverType = ((TypeVariable) receiverType).getUpperBound();
+          TypeMirror upperBound = ((TypeVariable) receiverType).getUpperBound();
+          if (upperBound != null) {
+            receiverType = upperBound;
+          }
         }
 
 	TypeElement receiverTypeElement = (TypeElement) typeutils.asElement(receiverType);
@@ -260,16 +271,33 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 		JCTree.JCExpression newMethodSelect =
 		    maker.Select(receiver, (Symbol) elem);
 
+                if (receiver.toString().equals("this")) {
+                    newMethodSelect = maker.Ident(names.fromString(elem.getSimpleName().toString())); 
+                }
+
 		// Arguments are the same, just use the original.
 		JCTree.JCMethodInvocation newMethodCall =
-		    maker.Apply(null, newMethodSelect, tree.getArguments());
+		    maker.Apply(tree.getTypeArguments(), newMethodSelect, tree.getArguments());
 
 		// System.err.println("Method found: " + elem.getSimpleName());
 		// Attribute the new tree.
 		// System.err.println("Attribbing: " + newMethodCall);
-		attr.attribExpr(newMethodCall, this.getAttrEnv(tree),
-				(Type)((ExecutableElement) elem).getReturnType());
+		System.err.println("newMethodCall: " + newMethodCall + " old: " + tree);
+		System.err.println("NewMethod: " + elem + " old meth: "  + originalSymbol);
+		System.err.println("env: " + this.getAttrEnv(tree));
+		System.err.println(" treetype: " + tree.type + " return type: "
+				   + ((ExecutableElement) elem).getReturnType());
+		Type retType;
+		// Use the original return type, unless it has a wildcard which has been captured.
+		// Really we need to build a new type, which uses the original type, in context,
+		// but uncapturing all the wildcards.
+		if (containsCapture(tree.type)) {
+		    retType = (Type)((ExecutableElement) elem).getReturnType();
+		} else {
+		    retType = tree.type;
+		}
 
+		attr.attribExpr(newMethodCall, this.getAttrEnv(tree), retType);
 		return newMethodCall;
 	    }
 	}
@@ -292,5 +320,31 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 	// System.err.println("No method found: ." + newName);
 	// Thread.dumpStack();
 	return tree;
+    }
+
+    private boolean containsCapture(Type t) {
+	if (t instanceof AnnotatedType) {
+	    return containsCapture(((AnnotatedType) t).unannotatedType());
+	}
+	switch(t.getTag()) {
+	case CLASS:
+	    ClassType ct = (ClassType) t;
+	    List<Type> tyvars = ct.getTypeArguments();
+	    while (tyvars != null && !tyvars.isEmpty() && tyvars.head != null) {
+		if (containsCapture(tyvars.head)) {
+		    return true;
+		} else {
+		    tyvars = tyvars.tail;
+		}
+	    }
+	    return false;
+	case ARRAY:
+	    return containsCapture(((ArrayType) t).getComponentType());
+	case TYPEVAR:
+	    return ((TypeVar) t).isCaptured();
+	case WILDCARD:
+	default:
+	    return false;
+	}
     }
 }

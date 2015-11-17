@@ -50,6 +50,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 					   TreePath p) {
 	super(c, env, p);
 	this.builder = new TreeBuilder(env);
+	copier = new TreeCopier<Void>(maker);
 	this.procEnv = env;
     }
 
@@ -112,6 +113,11 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
     protected final ProcessingEnvironment procEnv;
 
     /**
+     * Copier used for copying portions of the tree.
+     */
+    private final TreeCopier<Void> copier;
+
+    /**
      * The current class definition being processed.  We must know this in order
      * to properly insert new methods into this class.
      */
@@ -126,6 +132,11 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
      * The methods to add to the current class.
      */
     protected ListBuffer<JCTree> newMethods;
+
+    @Override
+    public void visitIdent(JCTree.JCIdent tree) {
+        result = copier.copy(tree);
+    }
 
     /**
      * We must record the current class we are processing in order to know which class
@@ -213,16 +224,19 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
      * Builds a checked argument to a function by calling the argument checking code.
      */
     private JCTree.JCExpression makeCheckedArgument(JCTree.JCExpression argument,
-						    Type argumentType) {
+						    JCTree.JCExpression argumentType,
+						    Object sym) {
 	JCTree.JCExpression checkerFunction = dotsExp(this.argumentCheckFunctionName);
 	JCTree.JCExpression checkedArgument =
 	    maker.Apply(null, checkerFunction,
 			List.of(argument, maker.Literal(this.stringLiteralFillInMarker)));
 	//return maker.TypeCast(argumentType, checkedArgument);
-        if (argumentType != null) {
-          return maker.TypeCast(argumentType, checkedArgument);
-        } else {
-          return checkedArgument;
+        if (argumentType == null ||
+	    argumentType.toString().equals("java.lang.Object") ||
+	    argumentType.toString().equals("Object")) {
+	    return checkedArgument;
+	} else {
+	    return maker.TypeCast(argumentType, checkedArgument);
         }
     }
 
@@ -248,12 +262,12 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	    //			(Symbol) TreeUtils.elementFromDeclaration(tree));
             selectMethod = maker.Select(dotsExp("this"), tree.name);
 	}
-
 	ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
 	List<JCTree.JCVariableDecl> params = tree.params;
 	while (params != null && params.head != null) {
 	    args.append(makeCheckedArgument(maker.Ident(params.head.name),
-                                            params.head.sym == null ? null : params.head.sym.type));
+                                            copier.copy(params.head.vartype),
+					    params.head.sym));
 	    params = params.tail;
 	}
 
@@ -310,16 +324,15 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 					      JCTree.JCBlock methodBody) {
 	Name originalName = tree.getName();
 	Name newName = names.fromString(originalName + namePostfix);
-	TreeCopier<Void> copier = new TreeCopier<Void>(maker);
 
 	JCTree.JCMethodDecl newMethod =
 	    maker.MethodDef(copier.copy(tree.mods),
 			    newName,
-			    tree.restype,
-			    tree.typarams,
-			    tree.params,
-			    tree.thrown,
-			    methodBody,
+			    copier.copy(tree.restype),
+			    copier.copy(tree.typarams),
+			    copier.copy(tree.params),
+			    copier.copy(tree.thrown),
+			    copier.copy(methodBody),
 			    null);
 
 	// If this is an interface we must make the methods default
@@ -484,8 +497,10 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 			      makeMaybeMethod(newSafeMethod, tree));
 
 	    if ((this.currentClassDef.mods.flags & Flags.INTERFACE) != 0) {
-		maybeMethod.mods.flags = maybeMethod.mods.flags | Flags.DEFAULT;
+		maybeMethod.mods.flags |= (Flags.DEFAULT + 0L);
 	    }
+
+            maybeMethod.mods.flags = maybeMethod.mods.flags & ~(Flags.ABSTRACT);
 	}
 
 	// Translate the body after attributing the new method so that the new
@@ -501,7 +516,8 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	// still have a safe version.
 	if ((this.currentClassDef.mods.flags & Flags.INTERFACE) != 0
 	    && newSafeMethod.body == null) {
-	    newSafeMethod.mods.flags = newSafeMethod.mods.flags | Flags.DEFAULT;
+            newSafeMethod.mods.flags = newSafeMethod.mods.flags & ~(Flags.ABSTRACT);
+	    newSafeMethod.mods.flags |= Flags.DEFAULT;
 	    
 	    newSafeMethod.body = maker.Block(0, List.of((JCTree.JCStatement)maker.Throw(
 		maker.NewClass(null,
@@ -513,6 +529,7 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	    // Put the original method back with a new safe call.
 	    JCTree.JCStatement newCode = makeCheckedMethodCall(newSafeMethod);
 	    tree.body = maker.Block(0L, List.of(newCode));
+            tree.mods.flags = tree.mods.flags & ~(Flags.ABSTRACT);
 	}
 
 	// System.err.println("Method: " + tree);
@@ -520,5 +537,5 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
 	// attributeInMethod(tree.body, tree, tree.body);
 
 	return tree;
-    }						       
+    }
 }

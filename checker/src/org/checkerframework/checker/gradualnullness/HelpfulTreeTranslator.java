@@ -248,7 +248,7 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
             // generating the environment. This allows us to get the environment
             // even when *other* parts of the code are not yet valid.
             int oldErrors = log.nerrors;
-            log.nerrors = 100; // MaxErrors now has protected access.
+            log.nerrors = 10000000; // MaxErrors now has protected access.
 
             AnonymousClassRemover remover = new AnonymousClassRemover();
             remover.remove(block, leaf);

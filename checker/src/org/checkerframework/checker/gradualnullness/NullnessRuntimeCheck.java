@@ -22,11 +22,14 @@ public class NullnessRuntimeCheck {
      * @return True if the type is compatible with the value, false otherwise.
      */
     public static boolean runtimeCheck(Object value, String type) {
-	if (value == null) {
+	System.err.println("Nullness Check Value: " + value + " type: " + type);
+	Thread.dumpStack();
+	return true;
+	/*	if (value == null) {
 	    return type.contains("Nullable");
 	} else {
 	    return true;
-	}
+	    }*/
     }
 
     /**

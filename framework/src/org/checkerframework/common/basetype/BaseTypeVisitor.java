@@ -276,6 +276,16 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
 
     @Override
     public Void visitClass(ClassTree node, Void p) {
+	ClassTree prevCurrentClassTree = this.currentClassTree;
+	this.currentClassTree = node;
+
+	Void val = visitClass2(node, p);
+
+	this.currentClassTree = prevCurrentClassTree;
+	return val;
+    }
+
+    public Void visitClass2(ClassTree node, Void p) {
         if (checker.shouldSkipDefs(node)) {
             // Not "return super.visitClass(node, p);" because that would
             // recursively call visitors on subtrees; we want to skip the
@@ -383,6 +393,95 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
     }
 
     /**
+     * This field stores the postfix to apply to save methods, and all
+     * checked method calls.
+     */
+    protected final String safeMethodNamePostfix = "_$safe";
+
+    /**
+     * The postfix to use for the runtime method selector to determine whether to
+     * invoke the safe version or the unsafe version of a method.
+     */
+    protected final String maybeMethodNamePostfix = "_$maybe";
+
+    private boolean currentClassTreeContainsSafeVersionOfConstructor(MethodTree node) {
+	if (!node.getName().toString().equals(this.constructorName)) {
+	    return false;
+	}
+
+	for (Tree member : this.currentClassTree.getMembers()) {
+	    if (member instanceof MethodTree) {
+		MethodTree methodMember = (MethodTree) member;
+		if (methodMember.getName().toString().equals(this.constructorName)) {
+		    boolean allParamsMatch =
+			node.getParameters().size() == methodMember.getParameters().size() - 1;
+
+		    if (!allParamsMatch) { continue; }
+
+		    for (int i = 0; i < node.getParameters().size(); i++) {
+			String paramType =
+			    methodMember.getParameters().get(i + 1).getType().toString();
+			allParamsMatch &=
+			    node.getParameters().get(i).getType().toString().equals(paramType);
+		    }
+
+		    String firstParam = methodMember.getParameters().get(0).getType().toString();
+		    if (allParamsMatch &&
+			firstParam.contains("SafeConstructorMarkerDummy")) {
+			return true;
+		    }
+		}
+	    }
+	}
+
+	return false;
+    }
+
+    private boolean currentClassTreeContainsSafeVersionOf(MethodTree node) {
+	String newName = node.getName() + this.safeMethodNamePostfix;
+
+	// System.out.println("Checking for safe version of: " + node.getName());
+	for (Tree member : this.currentClassTree.getMembers()) {
+	    if (member instanceof MethodTree) {
+		MethodTree methodMember = (MethodTree) member;
+		// System.out.println("Newname: " + newName);
+
+		if (methodMember.getName().toString().equals(newName)) {
+		    boolean allParamsMatch =
+			node.getParameters().size() == methodMember.getParameters().size();
+		    // System.out.println("params: " + node.getParameters());
+		    // System.out.println("Otherparams: " + methodMember.getParameters());
+		    if (!allParamsMatch) { continue; }
+
+		    for (int i = 0; i < node.getParameters().size(); i++) {
+			String paramType = methodMember.getParameters().get(i).getType().toString();
+			allParamsMatch &=
+			    node.getParameters().get(i).getType().toString().equals(paramType);
+		    }
+
+		    if (allParamsMatch) {
+			return true;
+		    } else {
+		    }
+		}
+	    }
+	}
+
+	return false;
+    }
+
+    /**
+     * The name used on all constructor methods.
+     */
+    protected final String constructorName = "<init>";
+
+    /**
+     * Keep the current class we're processing so that we can look up if a given
+     * method has a safe version or not.
+     */
+    private ClassTree currentClassTree = null;
+
+    /**
      * Performs pseudo-assignment check: checks that the method obeys override
      * and subtype rules to all overridden methods.
      *
@@ -399,6 +498,12 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
      */
     @Override
     public Void visitMethod(MethodTree node, Void p) {
+	if (node.getName().toString().endsWith(this.maybeMethodNamePostfix) ||
+	    this.currentClassTreeContainsSafeVersionOf(node) ||
+	    this.currentClassTreeContainsSafeVersionOfConstructor(node)) {
+	    //System.err.println("Skipping Method: " + node.getName() + " is synthetic");
+	    return null;
+	}
 
         // We copy the result from getAnnotatedType to ensure that
         // circular types (e.g. K extends Comparable<K>) are represented
@@ -1313,8 +1418,14 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
             if (ret != null) {
                 visitorState.setAssignmentContext(Pair.of((Tree) node, ret));
 
-                commonAssignmentCheck(ret, node.getExpression(),
-                        "return.type.incompatible", false);
+		
+		if (!
+                commonAssignmentCheck2(ret, node.getExpression(),
+				      "return.type.incompatible", false)) {
+		    //System.err.println("Bad tree: " + node);
+		    //System.err.println("enclosing: " + enclosing);
+		    //Thread.dumpStack();
+		}
             }
             return super.visitReturn(node, p);
         } finally {
@@ -1791,6 +1902,9 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
         return getExceptionParameterLowerBoundAnnotations();
     }
 
+    protected void commonAssignmentCheck(Tree varTree, ExpressionTree valueExp, /*@CompilerMessageKey*/ String errorKey) {
+	commonAssignmentCheck2(varTree, valueExp, errorKey);
+    }
 
     /**
      * Checks the validity of an assignment (or pseudo-assignment) from a value
@@ -1802,10 +1916,10 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
      * @param errorKey the error message to use if the check fails (must be a
      *        compiler message key, see {@link org.checkerframework.checker.compilermsgs.qual.CompilerMessageKey})
      */
-    protected void commonAssignmentCheck(Tree varTree, ExpressionTree valueExp,
+    protected boolean commonAssignmentCheck2(Tree varTree, ExpressionTree valueExp,
             /*@CompilerMessageKey*/ String errorKey) {
         if (!validateTypeOf(varTree)) {
-            return;
+            return true;
         }
 
         AnnotatedTypeMirror var = atypeFactory.getDefaultedAnnotatedType(varTree, valueExp);
@@ -1823,8 +1937,14 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
             isLocalVariableAssignment = TreeUtils.enclosingMethod(getCurrentPath()) != null;
         }
 
-        commonAssignmentCheck(var, valueExp, errorKey,
+        return commonAssignmentCheck2(var, valueExp, errorKey,
                 isLocalVariableAssignment);
+    }
+
+    protected void commonAssignmentCheck(AnnotatedTypeMirror varType,
+					 ExpressionTree valueExp, /*@CompilerMessageKey*/ String errorKey,
+					 boolean isLocalVariableAssignment) {
+	commonAssignmentCheck2(varType, valueExp, errorKey, isLocalVariableAssignment);
     }
 
     /**
@@ -1840,11 +1960,11 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
      *            Are we dealing with an assignment and is the lhs a local
      *            variable?
      */
-    protected void commonAssignmentCheck(AnnotatedTypeMirror varType,
+    protected boolean commonAssignmentCheck2(AnnotatedTypeMirror varType,
             ExpressionTree valueExp, /*@CompilerMessageKey*/ String errorKey,
             boolean isLocalVariableAssignment) {
         if (shouldSkipUses(valueExp))
-            return;
+            return true;
         if (varType.getKind() == TypeKind.ARRAY
                 && valueExp instanceof NewArrayTree
                 && ((NewArrayTree) valueExp).getType() == null) {
@@ -1854,12 +1974,18 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
             checkArrayInitialization(compType, arrayTree.getInitializers());
         }
         if (!validateTypeOf(valueExp)) {
-            return;
+            return true;
         }
         AnnotatedTypeMirror valueType = atypeFactory.getAnnotatedType(valueExp);
         assert valueType != null : "null type for expression: " + valueExp;
-        commonAssignmentCheck(varType, valueType, valueExp, errorKey,
+        return commonAssignmentCheck2(varType, valueType, valueExp, errorKey,
                 isLocalVariableAssignment);
+    }
+
+    protected void commonAssignmentCheck(AnnotatedTypeMirror varType,
+            AnnotatedTypeMirror valueType, Tree valueTree, /*@CompilerMessageKey*/ String errorKey,
+            boolean isLocalVariableAssignment) {
+	commonAssignmentCheck2(varType, valueType, valueTree, errorKey, isLocalVariableAssignment);
     }
 
     /**
@@ -1876,7 +2002,7 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
      *            Are we dealing with an assignment and is the lhs a local
      *            variable?
      */
-    protected void commonAssignmentCheck(AnnotatedTypeMirror varType,
+    protected boolean commonAssignmentCheck2(AnnotatedTypeMirror varType,
             AnnotatedTypeMirror valueType, Tree valueTree, /*@CompilerMessageKey*/ String errorKey,
             boolean isLocalVariableAssignment) {
 
@@ -1926,7 +2052,7 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
                                     mono.getCanonicalName(),
                                     mono.getCanonicalName(),
                                     valueType.toString()), valueTree);
-                    return;
+                    return false;
                 }
             }
         }
@@ -1946,7 +2072,10 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
         if (!success) {
             checker.report(Result.failure(errorKey,
                     valueTypeString, varTypeString), valueTree);
+	    return false;
         }
+
+	return true;
     }
 
     /**
