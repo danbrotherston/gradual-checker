@@ -340,14 +340,14 @@ public class TreeBuilder {
      * @param initializer  the initializer expression
      * @return  a VariableDeclTree declaring the new variable
      */
-    public VariableTree buildVariableDecl(TypeMirror type,
+    public VariableTree buildVariableDecl(TypeMirror realType,
                                           String name,
                                           Element owner,
                                           ExpressionTree initializer) {
         DetachedVarSymbol sym =
             new DetachedVarSymbol(0, names.fromString(name),
-                                  (Type)type, (Symbol)owner);
-        VariableTree tree = maker.VarDef(sym, (JCTree.JCExpression)initializer);
+                                  (Type)realType, (Symbol)owner);
+        VariableTree tree = maker.VarDefSafe(sym, (JCTree.JCExpression)initializer);
         sym.setDeclaration(tree);
         sym.kind = Kinds.VAR;
         return tree;

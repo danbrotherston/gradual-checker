@@ -216,10 +216,13 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
             env = enter.getTopLevelEnv((JCTree.JCCompilationUnit) path.getCompilationUnit());
         }
 
+
         if (exMeth != null)
             method = exMeth;
-        if (method != null)
+
+        if (method != null) {
             env = memberEnter.getMethodEnv(method, env);
+	}
 
         if (loop != null) {
             // EXPERIMENTAL (6/4/2012): Turning off this additional attribution
@@ -233,10 +236,15 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
         }
 
         if (exBlock != null && block != null) {
-            AnonymousClassRemover remover = new AnonymousClassRemover();
-            remover.remove(block, exBlock);
 
-            env = attr.attribStatToTree(block, env, remover.outLeaf);
+            AnonymousClassRemover remover = new AnonymousClassRemover();
+	    //	    System.err.println("Block: " + block + " env: " + env);
+            remover.remove(block, exBlock);
+	    JCTree outleaf = remover.outLeaf;
+
+			      
+            env = attr.attribStatToTree(block, env, outleaf);
+	    //System.err.println("Both not null: " + block + " outleaf " + outleaf + " env: " + env);
 
             remover.replace(block);
         }
@@ -254,7 +262,8 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
             remover.remove(block, leaf);
 
             env = attr.attribStatToTree(block, env, remover.outLeaf);
-            // System.out.println(env.info);
+	    //	    System.err.println("Env: " + env);
+	    //            System.err.println("Envinfo: " + env.info);
 
             remover.replace(block);
 
@@ -348,7 +357,9 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
 
             if (checker.hasOption("verbose"))
                 System.out.println("attributing: " + stat);
-            attr.attribStat(stat, getAttrEnv(repl));
+	    Env<AttrContext> attrEnv = getAttrEnv(repl);
+	    //System.err.println("attributing: " + stat + " with env: " + attrEnv);
+            attr.attribStat(stat, attrEnv);
             if (checker.hasOption("verbose"))
                 System.out.println("    attribution done.");
 
@@ -368,7 +379,9 @@ public class HelpfulTreeTranslator<Checker extends BaseTypeChecker> extends Tree
 
         if (checker.hasOption("verbose"))
             System.out.println("attributing: " + stat);
-        attr.attribStat(stat, getAttrEnv(stat, meth, block));
+	Env<AttrContext> attrEnv = getAttrEnv(stat, meth, block);
+	//System.err.println("attributing: " + stat + " with env: " + attrEnv + " in block: " + block);
+        attr.attribStat(stat, attrEnv);
         if (checker.hasOption("verbose"))
             System.out.println("    attribution done.");
 

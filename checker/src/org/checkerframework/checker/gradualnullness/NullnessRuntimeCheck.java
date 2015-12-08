@@ -23,13 +23,13 @@ public class NullnessRuntimeCheck {
      */
     public static boolean runtimeCheck(Object value, String type) {
 	System.err.println("Nullness Check Value: " + value + " type: " + type);
-	Thread.dumpStack();
-	return true;
-	/*	if (value == null) {
+	//Thread.dumpStack();
+	/*return true;*/
+	if (value == null) {
 	    return type.contains("Nullable");
 	} else {
 	    return true;
-	    }*/
+	}
     }
 
     /**

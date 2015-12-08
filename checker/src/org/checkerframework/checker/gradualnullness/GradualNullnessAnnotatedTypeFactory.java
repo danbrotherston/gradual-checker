@@ -26,17 +26,17 @@ public class GradualNullnessAnnotatedTypeFactory extends NullnessAnnotatedTypeFa
                                                                 boolean unused) {
         unused = super.addUnannotatedDefaultsToQualifierDefaults(defs, unused);
 	defs.addUnannotatedDefault(AnnotationUtils.fromClass(elements, Dynamic.class),
-			       DefaultLocation.RETURNS);
-	/*	defs.addUnannotatedDefault(AnnotationUtils.fromClass(elements, Dynamic.class),
-			       DefaultLocation.PARAMETERS);
+				   DefaultLocation.RETURNS);
 	defs.addUnannotatedDefault(AnnotationUtils.fromClass(elements, Dynamic.class),
+				   DefaultLocation.PARAMETERS);
+		/*defs.addUnannotatedDefault(AnnotationUtils.fromClass(elements, Dynamic.class),
 			       DefaultLocation.UPPER_BOUNDS);
 	// defs.addUnannotatedDefault(AnnotationUtils.fromClass(elements, Dynamic.class),
 	//		       DefaultLocation.EXPLICIT_UPPER_BOUNDS);*/
 	//defs.addUnannotatedDefault(AnnotationUtils.fromClass(elements, Dynamic.class),
-	//		       DefaultLocation.FIELD);
+	//			   DefaultLocation.FIELD);
 
-//	defs.treatAccessibleFieldsAsUnannotated();
+	defs.treatAccessibleFieldsAsUnannotated();
 	return unused;
     }
 

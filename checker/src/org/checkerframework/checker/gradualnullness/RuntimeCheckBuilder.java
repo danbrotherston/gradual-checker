@@ -7,11 +7,18 @@ import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
+import com.sun.tools.javac.code.Type;
+import com.sun.tools.javac.code.Type.ArrayType;
+import com.sun.tools.javac.code.Type.ClassType;
+import com.sun.tools.javac.code.Types;
+import com.sun.tools.javac.code.TypeTag.*;
+import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.tree.JCTree;
 import com.sun.tools.javac.tree.JCTree.JCBlock;
 import com.sun.tools.javac.tree.JCTree.JCExpression;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
+import com.sun.tools.javac.tree.TreeMaker;
 
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.javacutil.trees.TreeBuilder;
@@ -26,7 +33,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.element.Element;
-import javax.lang.model.util.Types;
+import javax.lang.model.element.Modifier;
 
 /**
  * This class builds runtime checks given the required methods and classes.
@@ -72,6 +79,16 @@ public class RuntimeCheckBuilder {
     protected final GradualNullnessChecker checker;
 
     /**
+     * Javac Tree Maker.
+     */
+    protected final TreeMaker maker;
+
+    /**
+     * Javac types instance.
+     */
+    protected final Types types;
+
+    /**
      * Provide the required methods and class to call them on in order to build
      * runtime typechecks.
      *
@@ -93,6 +110,8 @@ public class RuntimeCheckBuilder {
 	this.runtimeFailureMethod = runtimeFailureMethod;
 	this.checker = c;
 	this.builder = new TreeBuilder(env);
+	this.maker = TreeMaker.instance(((JavacProcessingEnvironment)env).getContext());
+	this.types = Types.instance(((JavacProcessingEnvironment)env).getContext());
 	this.procEnv = env;
     }
 
@@ -152,6 +171,31 @@ public class RuntimeCheckBuilder {
      * translator.  There is likely some refactoring here that could reduce
      * this coupling.
      */
+
+    public JCTree.JCVariableDecl buildNewVariableDecl(JCVariableDecl variableDecl,
+						      Element symbolOwner) {
+
+	// Build a variable declaration which will create the original variable in
+	// scope but initialize it to a null/0 value.
+	JCTree.JCVariableDecl newVarDecl = (JCTree.JCVariableDecl)
+	    builder.buildVariableDecl(variableDecl.getType(),
+				      variableDecl.getName().toString(),
+				      symbolOwner, null);
+
+	return newVarDecl;
+    }
+
+    public JCTree.JCStatement buildAssignmentStatement(JCVariableDecl originalDecl,
+						       JCVariableDecl newDecl) {
+
+	// Build an assignment from the old initializer, this will be the new statement passed
+	// to the runtimeCheck builder.
+	JCTree.JCStatement assignment = (JCTree.JCStatement)
+	    builder.buildAssignment(newDecl, originalDecl.getInitializer());
+
+	return assignment;
+    }
+
     public Map.Entry<JCTree, JCTree>  buildVarDeclRuntimeCheck(JCExpression value,
 							       JCVariableDecl variableDecl,
 							       JCBlock containingBlock,
@@ -239,6 +283,185 @@ public class RuntimeCheckBuilder {
      *         runtime check.  The other is the modified original statement that
      *         needs to be attributed.
      */
+
+    private int counter = 0;
+
+    private com.sun.tools.javac.util.List<Type>
+	fixTypes(com.sun.tools.javac.util.List<Type> originalTypes, boolean isOuter) {
+
+	com.sun.tools.javac.util.List<Type> newTypes = com.sun.tools.javac.util.List.<Type>nil();
+	com.sun.tools.javac.util.List<Type> iterator = null;
+
+	while (originalTypes != null && !originalTypes.isEmpty() && originalTypes.head != null) {
+	    Type newType = fixTypes(originalTypes.head, isOuter);
+	    
+	    if (iterator == null) {
+		iterator = com.sun.tools.javac.util.List.of(newType);
+		newTypes = iterator;
+	    } else {
+		iterator.tail = com.sun.tools.javac.util.List.of(newType);
+		iterator = iterator.tail;
+	    }
+
+	    originalTypes = originalTypes.tail;
+	}
+
+	return newTypes;
+    }
+							 
+
+    private Type fixTypes(Type t, boolean isOuter) {
+	if (t == null) { return null; }
+	switch (t.getTag()) {
+	case BYTE: case CHAR: case DOUBLE: case INT: case LONG: case FLOAT:
+	case BOOLEAN: case VOID:
+	    return t;
+	case TYPEVAR:
+	    return t;
+	case WILDCARD:
+	    return t;
+	case CLASS:
+	    /*	    System.err.println("ClassType: " + t);
+	    Type outer = t.getEnclosingType();
+	    System.err.println("Outer: " + outer);
+	    outer = fixTypes(outer, true);
+	    System.err.println("Outer after fixing: " + outer);
+	    com.sun.tools.javac.util.List<Type> tyParams = null;
+	    if (isOuter) {
+		tyParams = com.sun.tools.javac.util.List.<Type>nil();
+	    } else {
+		tyParams = t.getTypeArguments();
+	    }
+	    System.err.println("TypeArgs: " + tyParams);
+	    tyParams = fixTypes(tyParams, false);
+	    System.err.println("TypeArgs after fix: " + tyParams);
+	    return new ClassType(outer, tyParams, t.tsym);*/
+
+	    Type outer = fixTypes(t.getEnclosingType(), true);
+
+	    if (t.tsym.getModifiers().contains(Modifier.PRIVATE)) {
+		System.err.println("outer to noType");
+		outer = Type.noType;
+		//Type newType = new ClassType(Type.noType, t.getTypeArguments(), t.tsym);
+		//System.err.println("Since private, replace: " + t + " with: " + newType);
+		//return newType;
+	    }
+
+	    com.sun.tools.javac.util.List<Type> fixedTyArgs = fixTypes(t.getTypeArguments(), false);
+
+	    Type newType = new ClassType(outer, fixedTyArgs, t.tsym);
+	    System.err.println("New Type: " + newType + " replaces: " + t);
+	    return newType;
+
+	case ARRAY:
+	    return new ArrayType(fixTypes(types.elemtype(t), isOuter), t.tsym);
+	case ERROR:
+	    return t;
+	default:
+	    return t;
+	}
+    }
+
+    public JCVariableDecl buildVariable(Type type,
+					Element symbolOwner,
+					JCExpression value) {
+	// Build a variable declaration.  The declaration will be used so that any side
+	// effects of the value expression being tested aren't duplicated.  This variable
+	// is initialized to the value of the value expression, then references to this
+	// variable are used any time the expression value is needed.
+	Type realType = type;
+	System.err.println("Building variable with type: " + realType);
+	if (realType instanceof Type.ClassType) {
+	    System.err.println("Outer: " + realType.getEnclosingType());
+	}
+	/*Type newType = fixTypes(realType, false);
+	realType = newType;
+	System.err.println("Building variable with type after erasure: " + realType);*/
+
+	VariableTree variable =
+	    builder.buildVariableDecl(type, 
+				      this.runtimeValueVarName + this.counter++,
+				      symbolOwner, value);
+	System.err.println("Built tree: " + variable);
+	return (JCVariableDecl) variable;
+    }
+
+
+
+    public JCExpression buildVariableUse(VariableTree variable) {
+	// We need one more variable use instance in order to replace the value expression
+	// within the original statement.
+	JCExpression variableUse = (JCExpression) builder.buildVariableUse(variable);
+	return variableUse;
+    }
+
+    public JCStatement buildRuntimeCheck(JCStatement statement,
+					 JCStatement statementCopy,
+					 VariableTree variable,
+					 AnnotatedTypeMirror type,
+					 ExpressionTree checkMethodAccess,
+					 ExpressionTree failureMethodAccess) {
+	// First get two class tree symbols to call the actual methods.
+	/*	Element classTree1 =
+	    builder.getClassSymbolElement(this.runtimeCheckClass, procEnv);
+
+	Element classTree2 =
+	builder.getClassSymbolElement(this.runtimeCheckClass, procEnv);
+
+	// Get the method access tree for each the check and failure methods.
+	JCTree checkMethodAccess = (JCTree)
+	    builder.buildMethodAccess(this.runtimeCheckMethod, classTree1);
+	//				      builder.buildClassUse(classTree1));
+
+	JCTree failureMethodAccess = (JCTree)
+	    builder.buildMethodAccess(this.runtimeFailureMethod, classTree2);
+	//				      builder.buildClassUse(classTree2));
+	*/
+	// Build the method invocation tree given the method access tree and the parameters.
+	JCTree checkMethodInvocation =
+	    this.maker.Apply(null, (JCTree.JCExpression) checkMethodAccess,
+			     com.sun.tools.javac.util.List.of((JCTree.JCExpression)
+							      builder.buildVariableUse(variable),
+							      (JCTree.JCExpression)
+							      builder.buildLiteral(type.toString())));
+
+	    /*(JCTree)
+	    builder.buildMethodInvocation((JCExpression) checkMethodAccess,
+ 					  (JCExpression) builder.buildVariableUse(variable),
+					  (JCExpression) builder.buildLiteral(type.toString()));*/
+
+	JCTree failureMethodInvocation = 
+	    this.maker.Apply(null, (JCTree.JCExpression) failureMethodAccess,
+			     com.sun.tools.javac.util.List.of((JCTree.JCExpression)
+							      builder.buildVariableUse(variable),
+							      (JCTree.JCExpression)
+							      builder.buildLiteral(type.toString())));
+	    /*(JCTree)
+	    builder.buildMethodInvocation((JCExpression) failureMethodAccess,
+					  (JCExpression) builder.buildVariableUse(variable),
+					  (JCExpression) builder.buildLiteral(type.toString()));*/
+	
+	// The if condition is simply the check method invocation.
+	JCExpression condition = (JCExpression) checkMethodInvocation;
+
+	// Build the rest of the if statement.  The if part is the original (but modified)
+	// statement.  The else part is a call to the failure method, sequenced with the
+	// original statement in the event the program should continue past the failure
+	// method.
+	JCStatement ifPart = (JCStatement) builder.buildStmtBlock(statement);
+	JCStatement elsePart = (JCStatement) builder.buildStmtBlock(
+	    builder.buildExpressionStatement((ExpressionTree) failureMethodInvocation),
+	    statementCopy);
+
+	// The whole check is the variable declaration sequenced with the if statement,
+	// enclosed within a block to limit the scope of the variable declaration.
+        JCStatement checkedStatement = (JCStatement) builder.
+	    buildStmtBlock(variable,
+	    		   builder.buildIfStatement(condition, ifPart, elsePart));
+
+	return checkedStatement;
+    }
+
     public Map.Entry<JCTree, JCTree>  buildRuntimeCheck(JCExpression value,
 							JCStatement statement,
 							TreePath compilationUnit,

@@ -20,10 +20,13 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 /**
  * A checker extending the Nullness checker which provides the dynamic
@@ -82,8 +85,8 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
     @Override
     public void typeProcess(TypeElement element, TreePath path) {
 	// First perform normal typechecking.
-	// System.out.println("Starting processing Element: " + element);
-	//System.out.println("Before typecheck tree: " +
+	//System.err.println("Starting processing Element: " + element);
+	//System.err.println("Before typecheck tree: " +
 	//		   ((JCTree)path.getCompilationUnit()).toString());
 	super.typeProcess(element, path);
 	// System.out.println("Processing Element: " + element);
@@ -118,9 +121,53 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 		new RuntimeCheckBuilder(this, NullnessRuntimeCheck.class, runtimeCheck,
 	    				runtimeCheckFailure, getProcessingEnvironment());
 
-	    RuntimeCheckInserterTreeTranslator checkInserter =
-		new RuntimeCheckInserterTreeTranslator(this, getProcessingEnvironment(), path,
-						       runtimeCheckLocations, checkBuilder);
+	    SortedMap<Integer, Map<Tree, AnnotatedTypeMirror>> locations =
+		new TreeMap<Integer, Map<Tree, AnnotatedTypeMirror>>(Collections.reverseOrder());
+	    for (Map.Entry<TreePath, Map.Entry<Tree, AnnotatedTypeMirror>> location :
+		     runtimeCheckLocations.entrySet()) {
+		Integer value = 0;
+		TreePath depthCounter = location.getKey();
+		while (depthCounter.getParentPath() != null) {
+		    value++;
+		    depthCounter = depthCounter.getParentPath();
+		}
+
+		Map<Tree, AnnotatedTypeMirror> map = locations.get(value);
+		if (map == null) { map = new HashMap<Tree, AnnotatedTypeMirror>(); }
+
+		map.put(location.getValue().getKey(),
+			location.getValue().getValue());
+
+		locations.put(value, map);
+	    }
+
+	    for (Map.Entry<Integer, Map<Tree, AnnotatedTypeMirror>> locationsAtDepth :
+		     locations.entrySet()) {
+		//System.err.println("Depth: " + locationsAtDepth.getKey());
+		for (Map.Entry<Tree, AnnotatedTypeMirror> location :
+			 locationsAtDepth.getValue().entrySet()) {
+
+		    Map<Tree, AnnotatedTypeMirror> locationMap =
+			new HashMap<Tree, AnnotatedTypeMirror>();
+		    locationMap.put(location.getKey(), location.getValue());
+
+		    RuntimeCheckInserterTreeTranslator checkInserter =
+			new RuntimeCheckInserterTreeTranslator(this, getProcessingEnvironment(),
+							       locationMap, path, checkBuilder);
+		    tree.accept(checkInserter);
+
+		    Map<JCTree, JCTree> unattributedTrees = new HashMap<JCTree, JCTree>();
+		    for (Map.Entry<JCTree.JCStatement, JCTree.JCStatement> entry :
+			     checkInserter.runtimeCheckMap.entrySet()) {
+			unattributedTrees.put(entry.getValue(), entry.getKey());
+		    }
+
+		    AttributingTreeTranslator attributer =
+			new AttributingTreeTranslator(this, getProcessingEnvironment(), path,
+						      unattributedTrees);
+		    tree.accept(attributer);
+		}
+	    }
 	
 	    // System.out.println("Tree 1: " + tree);
 	    // Insert runtime checks.
@@ -143,8 +190,8 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 	    // System.out.println(tree);
 	    // tree.accept(translator);
 
-	    // System.out.println("Modified tree");
-	    // System.out.println(tree);
+	    //	    System.err.println("Modified tree");
+	    //	    System.err.println(tree);
 
 	    MethodRenamingTreeTranslator methodRenamer =
 		new MethodRenamingTreeTranslator(this, getProcessingEnvironment(), path);
@@ -162,8 +209,8 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 	    tree.accept(methodRenamer);
 	    tree.accept(constructorRefactorer);
 	    tree.accept(fillInTypePlaceholders);
-	    System.out.println("Final Tree:");
-	    System.out.println(tree);
+	    System.err.println("Final Tree:");
+	    System.err.println(tree);
 
 	} catch (NoSuchMethodException e) {
 	    ErrorReporter.errorAbort("Invalid method configuration for runtime checks.");

@@ -19,6 +19,14 @@ public class DynamicRuntimeTest {
     } catch(RuntimeException e) {
       System.out.println("Success");
     }
+
+    try {
+      foo.f().toString();
+    } catch (NullPointerException e) {
+      System.out.println("Fail");
+    } catch(RuntimeException e) {
+      System.out.println("Success");
+    }
   }
 
   void a() {

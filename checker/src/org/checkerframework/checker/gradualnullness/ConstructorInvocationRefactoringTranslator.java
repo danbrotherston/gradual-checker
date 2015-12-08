@@ -121,6 +121,7 @@ public class ConstructorInvocationRefactoringTranslator
         if (tree.toString().contains("SafeConstructorMarkerDummy")) {
             result  = tree;
         } else {
+	    //	    System.err.println("Visiting apply: " + tree);
             result = renameMethodApplication(tree);
         }
     }
@@ -247,8 +248,8 @@ public class ConstructorInvocationRefactoringTranslator
 		superCall = true;
 	    }
 
-	    // System.out.println("Method Symbol: " + methodSymbol + " method ident: "
-	    //     + methodIdentifier + " method symbol name: " + methodSymbol.name);
+	    //	    System.err.println("Method Symbol: " + methodSymbol + " method ident: "
+	    //		       + methodIdentifier);// + " method symbol name: " + methodSymbol.name);
 
 	    if (methodSymbol.name.toString().equals(this.constructorMethodName)) {
 		tree = renameMethod(tree, thisExp(), underlyingReceiverType,

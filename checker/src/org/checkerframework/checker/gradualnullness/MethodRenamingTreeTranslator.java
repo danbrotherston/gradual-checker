@@ -113,7 +113,11 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
      */
     @Override
     public void visitApply(JCTree.JCMethodInvocation tree) {
-	result = renameMethodApplication(tree);
+	if (tree.toString().contains("NullnessRuntimeCheck.runtime")) {
+	    result = tree;
+	} else {
+	    result = renameMethodApplication(tree);
+	}
     }
 
     @Override
@@ -170,13 +174,15 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
 		}
 	    }
 
-	    // System.out.println("Selected: " + fieldAccess.selected);
-	    // System.out.println("Selected Class: " + fieldAccess.selected.getClass());
-	    // System.out.println("Underlying Reciever Type: " + underlyingReceiverType);
+	    //    System.out.println("Selected: " + fieldAccess.selected);
+	    //System.out.println("Selected Class: " + fieldAccess.selected.getClass());
+	    //System.out.println("Underlying Reciever Type: " + underlyingReceiverType);
 
 	    if (underlyingReceiverType instanceof DeclaredType ||
 		underlyingReceiverType instanceof TypeVariable) {
 
+		System.err.println("Tree: " + tree + " fieldAccess: " + fieldAccess
+				   + " sym: " + fieldAccess.sym);
 		Name methodIdentifier = fieldAccess.getIdentifier();
 		MethodSymbol methodSymbol = (MethodSymbol) fieldAccess.sym;
 

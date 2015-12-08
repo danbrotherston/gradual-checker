@@ -51,6 +51,8 @@ public class AttributingTreeTranslator extends GeneralTreeTranslator {
 			       (JCTree.JCExpression) that);
 	    } else if (that instanceof JCTree.JCStatement &&
 		       original instanceof JCTree.JCStatement) {
+		System.err.println("Attrib orig: " + original + 
+				   "replacement: " + that);
 		this.attribute((JCTree.JCStatement) original,
 			       (JCTree.JCStatement) that);
 	    }

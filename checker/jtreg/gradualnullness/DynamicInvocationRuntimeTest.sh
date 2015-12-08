@@ -12,7 +12,7 @@ fi
 
 set -e
 
-$TESTSRC/../../bin/javac -doe -d $TESTCLASSES -processor org.checkerframework.checker.gradualnullness.GradualNullnessChecker $TESTSRC/DynamicInvocationRuntimeTest.java
+$TESTSRC/../../bin/javac -AprintErrorStack -doe -d $TESTCLASSES -processor org.checkerframework.checker.gradualnullness.GradualNullnessChecker $TESTSRC/DynamicInvocationRuntimeTest.java
 
 java -classpath $TESTSRC/../../dist/checker.jar:.:$TESTCLASSES DynamicInvocationRuntimeTest > $TESTCLASSES/DynamicInvocationRuntimeTest.testout
 
