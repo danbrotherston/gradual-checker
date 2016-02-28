@@ -22,6 +22,7 @@ public class RuntimeCheck {
      *         checked by the checker framework.
      */
     public static boolean isChecked(Object value) {
+        //System.err.println("x");
 	Class<?> clazz = value.getClass();
 	try {
 	    clazz.getDeclaredField(RuntimeCheck.MARKER_FIELD_NAME);

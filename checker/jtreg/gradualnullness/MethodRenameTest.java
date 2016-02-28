@@ -18,7 +18,6 @@ public class MethodRenameTest {
 
   void a() {
     @Nullable Integer h = f(3);
-    System.out.println(h);
   }
 
   @Dynamic Integer f(Integer bar) {

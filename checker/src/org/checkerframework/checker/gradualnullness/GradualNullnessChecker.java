@@ -121,6 +121,7 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 		new RuntimeCheckBuilder(this, NullnessRuntimeCheck.class, runtimeCheck,
 	    				runtimeCheckFailure, getProcessingEnvironment());
 
+	    /*
 	    SortedMap<Integer, Map<Tree, AnnotatedTypeMirror>> locations =
 		new TreeMap<Integer, Map<Tree, AnnotatedTypeMirror>>(Collections.reverseOrder());
 	    for (Map.Entry<TreePath, Map.Entry<Tree, AnnotatedTypeMirror>> location :
@@ -168,20 +169,20 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 		    tree.accept(attributer);
 		}
 	    }
-	
+	    */
 	    // System.out.println("Tree 1: " + tree);
 	    // Insert runtime checks.
-	    //	    RuntimeCheckTreeTranslator replacer =
-	    //	new RuntimeCheckTreeTranslator(this, getProcessingEnvironment(), path,
-	    //				       runtimeCheckLocations, checkBuilder);
+	    RuntimeCheckTreeExpressionTranslator replacer =
+	    	new RuntimeCheckTreeExpressionTranslator(this, getProcessingEnvironment(), path,
+							 runtimeCheckLocations, checkBuilder);
 
 	    // System.out.println("Tree with new methods");
 	    // System.out.println(tree);
-	    //	    tree.accept(replacer);
+	    tree.accept(replacer);
 
 	    // Now attribute the new trees.
 	    //Map<JCTree, JCTree> unattributedTrees = replacer.getUnattributedTrees();
-
+	    
 	    //AttributingTreeTranslator translator =
 	    //new AttributingTreeTranslator(this, getProcessingEnvironment(), path,
 	    //				      unattributedTrees);
@@ -209,8 +210,8 @@ public class GradualNullnessChecker extends AbstractNullnessFbcChecker {
 	    tree.accept(methodRenamer);
 	    tree.accept(constructorRefactorer);
 	    tree.accept(fillInTypePlaceholders);
-	    System.err.println("Final Tree:");
-	    System.err.println(tree);
+	    //System.err.println("Final Tree:");
+	    //System.err.println(tree);
 
 	} catch (NoSuchMethodException e) {
 	    ErrorReporter.errorAbort("Invalid method configuration for runtime checks.");

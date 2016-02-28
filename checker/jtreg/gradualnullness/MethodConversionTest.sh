@@ -10,7 +10,7 @@ if [ -z $TESTCLASSES ]
       TESTCLASSES=.
 fi
 
-$TESTSRC/../../bin/javac -d $TESTCLASSES -processor org.checkerframework.checker.gradualnullness.GradualNullnessChecker $TESTSRC/MethodConversionTest.java
+$TESTSRC/../../bin/javac -doe -d $TESTCLASSES -processor org.checkerframework.checker.gradualnullness.GradualNullnessChecker $TESTSRC/MethodConversionTest.java
 javap $TESTCLASSES/MethodConversionTest.class > $TESTCLASSES/MethodConversionTest.testout
 
 set -e

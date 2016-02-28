@@ -22,14 +22,16 @@ public class NullnessRuntimeCheck {
      * @return True if the type is compatible with the value, false otherwise.
      */
     public static boolean runtimeCheck(Object value, String type) {
-	System.err.println("Nullness Check Value: " + value + " type: " + type);
+	//System.err.println("Nullness Check Value: " + value + " type: " + type);
 	//Thread.dumpStack();
 	/*return true;*/
-	if (value == null) {
-	    return type.contains("Nullable");
-	} else {
-	    return true;
-	}
+
+      type = type.contains("<") ? type.substring(0, type.indexOf("<")) : type;
+      boolean nullable = type.contains("Nullable") || type.contains("PolyNull");
+      int index = type.indexOf("Nullable");
+      index = index == -1 ? type.indexOf("PolyNull") : index;
+      nullable = nullable && index > type.indexOf("NonNull");
+      return nullable || (value != null);
     }
 
     /**
@@ -43,7 +45,7 @@ public class NullnessRuntimeCheck {
      *             with.
      */
     public static void runtimeFailure(Object value, String type) {
-	System.out.println("Typecheck failure on value: " + value);
+	System.out.println("Typecheck failure on value: " + value + " with type: " + type);
 	throw new RuntimeException("Type Error");
     }
 
@@ -63,6 +65,7 @@ public class NullnessRuntimeCheck {
      * @return The provided value, always, unless an error is thrown.
      */
     public static @PolyNull Object runtimeCheckArgument(@PolyNull Object value, String type) {
+        //System.err.println("x");
 	if (!runtimeCheck(value, type)) {
 	    runtimeFailure(value, type);
 	}

@@ -124,6 +124,7 @@ public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualN
     public void visitMethodDef(JCTree.JCMethodDecl tree) {
 	Element prevSymbolOwner = lastSymbolOwner;
 	lastSymbolOwner = tree.sym;
+
 	if (tree.getName().toString().endsWith(this.maybeMethodNamePostfix)) {
 	    result = tree;
 	} else {
