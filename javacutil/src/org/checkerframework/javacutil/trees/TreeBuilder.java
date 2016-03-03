@@ -347,7 +347,7 @@ public class TreeBuilder {
         DetachedVarSymbol sym =
             new DetachedVarSymbol(0, names.fromString(name),
                                   (Type)realType, (Symbol)owner);
-        VariableTree tree = maker.VarDefSafe(sym, (JCTree.JCExpression)initializer);
+        VariableTree tree = maker.VarDef(sym, (JCTree.JCExpression)initializer);
         sym.setDeclaration(tree);
         sym.kind = Kinds.VAR;
         return tree;
