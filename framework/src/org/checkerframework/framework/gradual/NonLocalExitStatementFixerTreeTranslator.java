@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
@@ -10,6 +10,7 @@ import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 import com.sun.tools.javac.tree.TreeCopier;
 
+import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 
 import org.checkerframework.javacutil.TreeUtils;
@@ -31,8 +32,8 @@ import javax.lang.model.element.Element;
  * runtime check locations (as values which need to tested) and replaces their
  * enclosing statements with runtime checks.
  */
-public class NonLocalExitStatementFixerTreeTranslator extends
-	HelpfulTreeTranslator<GradualNullnessChecker> {
+public class NonLocalExitStatementFixerTreeTranslator<Checker extends BaseTypeChecker> extends
+	HelpfulTreeTranslator<Checker> {
 
     /**
      * Stack keeping track of our position within the tree, allowing us to get
@@ -62,7 +63,7 @@ public class NonLocalExitStatementFixerTreeTranslator extends
      * @param checkBuilder A properly configured RuntimeCheckBuilder to use to build the runtime
      *                     checks.
      */
-    public NonLocalExitStatementFixerTreeTranslator(GradualNullnessChecker c,
+    public NonLocalExitStatementFixerTreeTranslator(Checker c,
 						    ProcessingEnvironment env,
 						    TreePath p) {
 	super(c, env, p);

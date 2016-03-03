@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodTree;
@@ -17,7 +17,6 @@ import com.sun.tools.javac.tree.JCTree.JCIdent;
 import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
 import com.sun.tools.javac.tree.JCTree.JCMethodInvocation;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
-import com.sun.tools.javac.tree.TreeCopier;
 import com.sun.tools.javac.util.List;
 import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Name;
@@ -34,6 +33,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Types;
 
+import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeFactory;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedExecutableType;
@@ -52,13 +52,14 @@ import org.checkerframework.javacutil.TreeUtils;
  * This code is based on the MethodBindingTranslator from enerj,
  * but is simpler because the translation is unconditional.
  */
-public class FixAnnotationsFormatTreeTranslator
-    extends HelpfulTreeTranslator<GradualNullnessChecker> {
-    public FixAnnotationsFormatTreeTranslator(GradualNullnessChecker c,
-					      ProcessingEnvironment env,
-					      TreePath p) {
+public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker>
+    extends HelpfulTreeTranslator<Checker> {
+    public FillInTypePlaceholderTreeTranslator(Checker c,
+					       ProcessingEnvironment env,
+					       TreePath p) {
 	super(c, env, p);
 	this.builder = new TreeBuilder(env);
+	this.aTypeFactory = c.getTypeFactory();
 	this.procEnv = env;
     }
 
@@ -73,6 +74,11 @@ public class FixAnnotationsFormatTreeTranslator
      * constructed with.
      */
     protected final ProcessingEnvironment procEnv;
+
+    /**
+     * The type factory to use for manipulating annotated types.
+     */
+    protected final AnnotatedTypeFactory aTypeFactory;
 
     /**
      * This is necessary because the checker framework typechecking has not run at this
@@ -107,24 +113,12 @@ public class FixAnnotationsFormatTreeTranslator
 
     @Override
     public void visitMethodDef(JCTree.JCMethodDecl tree) {
-	if (tree.mods != null &&
-	    (tree.mods.flags & Flags.DEFAULT) != 0 &&
-	    (tree.mods.flags & Flags.ABSTRACT) != 0) {
-	    TreeCopier<Void> copier = new TreeCopier<Void>(maker);
-	    tree.mods = copier.copy(tree.mods);
-	    boolean hasBody = tree.body == null;
-	    if (hasBody) {
-		tree.mods.flags = tree.mods.flags & ~(Flags.ABSTRACT);
-	    } else {
-		tree.mods.flags = tree.mods.flags & ~(Flags.DEFAULT);
-	    }
-	}
-
-	result = tree;
+	JCTree.JCMethodDecl prevLastMethod = this.lastMethodDef;
+	this.lastMethodDef = tree;
+	super.visitMethodDef(tree);
+	this.lastMethodDef = prevLastMethod;
     }
 
-    
-    /*
     @Override
     public void visitLiteral(JCTree.JCLiteral tree) {
 	// System.out.println("treevalue: \"" + tree.getValue().toString() + "\"");
@@ -193,26 +187,5 @@ public class FixAnnotationsFormatTreeTranslator
 	    tree.args = translate(tree.args);
 	}
 	result = tree;
-	}*/
-/*
-    @Override
-    public void visitVarDef(JCTree.JCVariableDecl tree) {
-	TreeCopier<Void> copier = new TreeCopier<Void>(maker);
-
-	
-	if (tree.getModifiers().getAnnotations() != null &&
-	    tree.getModifiers().getAnnotations().nonEmpty()) {
-	    System.err.println("Fixing one: " + tree);
-	    if (tree.vartype instanceof JCTree.JCAnnotatedType) {
-		System.err.println("Already has annotated type: " + tree.vartype);
-	    }
-	    tree.vartype =
-		maker.AnnotatedType(copier.copy(tree.getModifiers().getAnnotations()),
-				    copier.copy(tree.vartype));
-
-	    tree.getModifiers().annotations = List.<JCTree.JCAnnotation>nil();
-	}
-
-	result = tree;
-    }*/
+    }
 }

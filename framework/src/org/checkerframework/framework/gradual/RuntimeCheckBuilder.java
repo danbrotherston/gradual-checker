@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.ExpressionTree;
@@ -20,6 +20,7 @@ import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 import com.sun.tools.javac.tree.TreeMaker;
 
+import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.javacutil.trees.TreeBuilder;
 import org.checkerframework.javacutil.TreeUtils;
@@ -38,7 +39,7 @@ import javax.lang.model.element.Modifier;
 /**
  * This class builds runtime checks given the required methods and classes.
  */
-public class RuntimeCheckBuilder {
+public class RuntimeCheckBuilder<Checker extends BaseTypeChecker> {
 
     /**
      * Class to use to perform runtime checks.
@@ -76,7 +77,7 @@ public class RuntimeCheckBuilder {
     /**
      * The checker which is building the checks.
      */
-    protected final GradualNullnessChecker checker;
+    protected final Checker checker;
 
     /**
      * Javac Tree Maker.
@@ -100,7 +101,7 @@ public class RuntimeCheckBuilder {
      * method but should be used to report an error.
      * @param env The processing environment to use while building trees.
      */
-    public RuntimeCheckBuilder(GradualNullnessChecker c,
+    public RuntimeCheckBuilder(Checker c,
 			       Class<?> runtimeCheckClass,
 			       Method runtimeCheckMethod,
 			       Method runtimeFailureMethod,
@@ -510,9 +511,12 @@ public class RuntimeCheckBuilder {
 	JCExpression variableUse = (JCExpression) builder.buildVariableUse(variable);
 
 	// Replace the value within the original statement with an instance of the variable.
-	SingleReplacementTreeTranslator replacer =
-	    new SingleReplacementTreeTranslator(this.checker, this.procEnv, compilationUnit,
-						value, variableUse);
+	SingleReplacementTreeTranslator<Checker> replacer =
+	    new SingleReplacementTreeTranslator<Checker>(this.checker,
+							 this.procEnv,
+							 compilationUnit,
+							 value,
+							 variableUse);
 	// System.out.println("Statement Before: " + statement);
 	statement.accept(replacer);
 	// System.out.println("Statement After: " + statement);

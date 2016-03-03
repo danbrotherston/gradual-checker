@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.tree.JCTree;
@@ -8,6 +8,8 @@ import com.sun.tools.javac.tree.JCTree.JCStatement;
 import java.util.Map;
 
 import javax.annotation.processing.ProcessingEnvironment;
+
+import org.checkerframework.common.basetype.BaseTypeChecker;
 
 /**
  * @author danbrotherston
@@ -20,7 +22,8 @@ import javax.annotation.processing.ProcessingEnvironment;
  * the tree, and the the value should be the previous node value, if the node
  * has been mutated, or the block in which the new node is added.
  */
-public class AttributingTreeTranslator extends GeneralTreeTranslator {
+public class AttributingTreeTranslator<Checker extends BaseTypeChecker>
+        extends GeneralTreeTranslator<Checker> {
     private final Map<JCTree, JCTree> attributionMap;
 
     /**
@@ -31,7 +34,7 @@ public class AttributingTreeTranslator extends GeneralTreeTranslator {
      * @param attributionMap The set of nodes to annotate, as described in the class
      *                       description.
      */
-    public AttributingTreeTranslator(GradualNullnessChecker c,
+    public AttributingTreeTranslator(Checker c,
 				     ProcessingEnvironment env,
 				     TreePath p,
 				     Map<JCTree, JCTree> attributionMap) {

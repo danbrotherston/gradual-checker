@@ -45,7 +45,7 @@ public class NullnessRuntimeCheck {
      *             with.
      */
     public static void runtimeFailure(Object value, String type) {
-	System.out.println("Typecheck failure on value: " + value + " with type: " + type);
+	System.out.println("Typecheck failure on value: " + value/* + " with type: " + type*/);
 	throw new RuntimeException("Type Error");
     }
 

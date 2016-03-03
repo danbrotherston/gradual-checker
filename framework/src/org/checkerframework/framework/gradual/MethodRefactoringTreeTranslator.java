@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.IdentifierTree;
@@ -29,6 +29,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
+import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeFactory;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedExecutableType;
@@ -44,14 +45,17 @@ import org.checkerframework.javacutil.TreeUtils;
  * This code is based on the MethodBindingTranslator from enerj,
  * but is simpler because the translation is unconditional.
  */
-public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<GradualNullnessChecker> {
-    public MethodRefactoringTreeTranslator(GradualNullnessChecker c,
+public class MethodRefactoringTreeTranslator<Checker extends BaseTypeChecker>
+        extends HelpfulTreeTranslator<Checker> {
+    public MethodRefactoringTreeTranslator(Checker c,
 					   ProcessingEnvironment env,
-					   TreePath p) {
+					   TreePath p,
+					   String argumentCheckMethodName) {
 	super(c, env, p);
 	this.builder = new TreeBuilder(env);
 	copier = new TreeCopier<Void>(maker);
 	this.procEnv = env;
+	this.argumentCheckFunctionName = argumentCheckMethodName;
     }
 
     /**
@@ -81,14 +85,13 @@ public class MethodRefactoringTreeTranslator extends HelpfulTreeTranslator<Gradu
      * based on a class which has been checked by the checker framework.
      */
     protected final String runtimeCheckIsCheckedFQMethodName =
-	"org.checkerframework.checker.gradualnullness.RuntimeCheck.isChecked";
+	"org.checkerframework.framework.gradual.RuntimeCheck.isChecked";
 
     /**
      * String references the runtimeCheckArgument function in the NullnessRunctimeCheck
      * class.
      */
-    protected final String argumentCheckFunctionName =
-	"org.checkerframework.checker.gradualnullness.NullnessRuntimeCheck.runtimeCheckArgument";
+    protected final String argumentCheckFunctionName;
 
     /**
      * This is necessary because the checker framework typechecking has not run at this

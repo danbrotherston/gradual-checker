@@ -18,4 +18,4 @@ set -e
 
 diff $TESTSRC/ConstructorTest.out $TESTCLASSES/ConstructorTest.testout
 
-javap -c $TESTCLASSES/ConstructorTest.class | grep -c '[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method "<init>":(Lorg/checkerframework/checker/gradualnullness/SafeConstructorMarkerDummy;Ljava/lang/Integer;)V' | grep -q '3'
+javap -c $TESTCLASSES/ConstructorTest.class | grep -c '[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method "<init>":(Lorg/checkerframework/framework/gradual/SafeConstructorMarkerDummy;Ljava/lang/Integer;)V' | grep -q '3'

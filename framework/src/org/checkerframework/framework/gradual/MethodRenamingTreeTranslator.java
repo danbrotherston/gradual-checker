@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.MethodTree;
@@ -37,6 +37,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Types;
 
+import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeFactory;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedExecutableType;
@@ -55,8 +56,9 @@ import org.checkerframework.javacutil.TreeUtils;
  * This code is based on the MethodBindingTranslator from enerj,
  * but is simpler because the translation is unconditional.
  */
-public class MethodRenamingTreeTranslator extends HelpfulTreeTranslator<GradualNullnessChecker> {
-    public MethodRenamingTreeTranslator(GradualNullnessChecker c,
+public class MethodRenamingTreeTranslator<Checker extends BaseTypeChecker>
+        extends HelpfulTreeTranslator<Checker> {
+    public MethodRenamingTreeTranslator(Checker c,
 					ProcessingEnvironment env,
 					TreePath p) {
 	super(c, env, p);

@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
@@ -9,6 +9,7 @@ import com.sun.tools.javac.tree.JCTree.JCBlock;
 import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 
+import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 
 import java.util.AbstractMap.SimpleEntry;
@@ -26,7 +27,8 @@ import javax.annotation.processing.ProcessingEnvironment;
  * runtime check locations (as values which need to tested) and replaces their
  * enclosing statements with runtime checks.
  */
-public class RuntimeCheckTreeTranslator extends ReplacingTreeTranslator {
+public class RuntimeCheckTreeTranslator<Checker extends BaseTypeChecker>
+        extends ReplacingTreeTranslator<Checker> {
     // I hate you Java.
     static private Map<JCTree, JCTree> leftToAttributeStatic;
     private Map<JCTree, JCTree> leftToAttribute;
@@ -51,12 +53,12 @@ public class RuntimeCheckTreeTranslator extends ReplacingTreeTranslator {
      * @param checkBuilder A properly configured RuntimeCheckBuilder to use to build the runtime
      *                     checks.
      */
-    public RuntimeCheckTreeTranslator(GradualNullnessChecker c,
+    public RuntimeCheckTreeTranslator(Checker c,
 				      ProcessingEnvironment env,
 				      TreePath p,
 				      Map<TreePath, Map.Entry<Tree, AnnotatedTypeMirror>>
 				          replacementLocations,
-				      RuntimeCheckBuilder checkBuilder) {
+				      RuntimeCheckBuilder<Checker> checkBuilder) {
 	// Since this must occur in a method which we can call here to satisfy Java we
 	// have to do some finagling.
 	super(c, env, p,
@@ -76,11 +78,12 @@ public class RuntimeCheckTreeTranslator extends ReplacingTreeTranslator {
      * @params As described in the constructor.
      * @return A mapping from tree nodes to their replacements with runtime checks inserted.
      */
-    static private Map<JCTree, JCTree> buildReplacementMap(RuntimeCheckBuilder checkBuilder,
-							   TreePath p,
-							   Map<TreePath,
-							       Map.Entry<Tree, AnnotatedTypeMirror>>
-							   replacementLocations) {
+    static private <Checker extends BaseTypeChecker> Map<JCTree, JCTree> buildReplacementMap
+	(RuntimeCheckBuilder<Checker> checkBuilder,
+	 TreePath p,
+	 Map<TreePath,
+	 Map.Entry<Tree, AnnotatedTypeMirror>>
+	 replacementLocations) {
 	// Initialize this to a new static empty hashmap, so that this is separate from other
 	// invocations of the constructor.  This must be done syncronously.
 	leftToAttributeStatic = new HashMap<JCTree, JCTree>();

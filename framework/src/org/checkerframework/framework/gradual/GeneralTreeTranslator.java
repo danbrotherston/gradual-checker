@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
@@ -59,6 +59,8 @@ import com.sun.tools.javac.tree.JCTree.LetExpr;
 
 import javax.annotation.processing.ProcessingEnvironment;
 
+import org.checkerframework.common.basetype.BaseTypeChecker;
+
 /**
  * @author danbrotherston
  *
@@ -72,11 +74,12 @@ import javax.annotation.processing.ProcessingEnvironment;
  * visitor, resulting in a depth first traversal, then calls visitTree on the given (that)
  * tree node.  Thus visitTree is now called for every node in descendent translators.
  */
-public class GeneralTreeTranslator extends HelpfulTreeTranslator<GradualNullnessChecker> {
-    public GeneralTreeTranslator(GradualNullnessChecker c,
+public class GeneralTreeTranslator<Checker extends BaseTypeChecker>
+        extends HelpfulTreeTranslator<Checker> {
+
+    public GeneralTreeTranslator(Checker c,
 				 ProcessingEnvironment env,
 				 TreePath p) {
-
 	super(c, env, p);
     }
 

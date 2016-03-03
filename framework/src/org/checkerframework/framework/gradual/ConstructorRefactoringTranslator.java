@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.IdentifierTree;
@@ -35,7 +35,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeFactory;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedExecutableType;
@@ -55,15 +55,18 @@ import org.checkerframework.javacutil.TreeUtils;
  * TODO(danbrotherston): Refactor common logic here with
  * MethodRefactoringTreeTranslator.
  */
-public class ConstructorRefactoringTranslator
-    extends HelpfulTreeTranslator<GradualNullnessChecker> {
+public class ConstructorRefactoringTranslator<Checker extends BaseTypeChecker>
+    extends HelpfulTreeTranslator<Checker> {
 
-    public ConstructorRefactoringTranslator(GradualNullnessChecker c,
+    public ConstructorRefactoringTranslator(Checker c,
 					    ProcessingEnvironment env,
-					    TreePath p) {
+					    TreePath p,
+					    String argumentCheckMethod) {
 	super(c, env, p);
 	this.builder = new TreeBuilder(env);
 	this.procEnv = env;
+	this.argumentCheckFunctionName = argumentCheckMethod;
+	this.copier = new TreeCopier<Void>(maker);
     }
 
     /**
@@ -74,10 +77,33 @@ public class ConstructorRefactoringTranslator
 	SafeConstructorMarkerDummy.class;
 
     /**
+     * Copier used for copying portions of the tree.
+     */
+    private final TreeCopier<Void> copier;
+
+    /**
+     * String references the runtimeCheckArgument function in the NullnessRunctimeCheck
+     * class.
+     */
+    protected final String argumentCheckFunctionName;
+
+    /**
+     * This is necessary because the checker framework typechecking has not run at this
+     * point yet, thus the checker framework type is unavailable.  We mark the string
+     * literal with this value so that we can fill the type in at a later time.
+     *
+     * If the end user program author was to use this particular string in their code
+     * they would cause the checker framework to replace their string constant with a type.
+     */
+    protected final String stringLiteralFillInMarker =
+	"$%^CheckerFrameworkFillInTypeHere!@#";
+
+    /**
      * The class of the nullable annotation class used for adding
      * a nullable annotation to correctly typecheck the dummy param.
      */
-    protected final Class<Nullable> nullableAnnotationClass = Nullable.class;
+    protected final String nullableAnnotationFQClassName =
+	"org.checkerframework.checker.nullness.qual.Nullable";
 
     /**
      * The secret name given to constructors in Java.
@@ -183,9 +209,15 @@ public class ConstructorRefactoringTranslator
 	    maker.Param(names.fromString(this.paramName),
 			this.getMarkerClassType(),
 			this.currentClassDef.sym);*/
-
+	
+	Class<?> nullableAnnotationClass = null;
+	try {
+	    nullableAnnotationClass = Class.forName(this.nullableAnnotationFQClassName);
+	} catch (ClassNotFoundException e) {
+	    System.err.println("linking error, cannot get the annotation nullable class name during compilation.");
+	}
 	Type nullableAnnotationType = 
-	    ((Symbol) (this.builder.getClassSymbolElement(this.nullableAnnotationClass,
+	    ((Symbol) (this.builder.getClassSymbolElement(nullableAnnotationClass,
 							  this.procEnv))).type;
 
         JCTree.JCAnnotation nullableAnnotation =
@@ -204,7 +236,6 @@ public class ConstructorRefactoringTranslator
 
 	ListBuffer<JCTree.JCVariableDecl> newParamList = new ListBuffer<JCTree.JCVariableDecl>();
 	List<JCTree.JCVariableDecl> params = tree.params;
-	TreeCopier<Void> copier = new TreeCopier<Void>(maker);
 
 	/*JCTree.JCVariableDecl newParam = copier.copy(tree.params.head);
 	newParam.name = names.fromString(this.paramName);
@@ -245,16 +276,37 @@ public class ConstructorRefactoringTranslator
     }
 
     /**
+     * Builds a checked argument to a function by calling the argument checking code.
+     */
+    private JCTree.JCExpression makeCheckedArgument(JCTree.JCExpression argument,
+						    JCTree.JCExpression argumentType,
+						    Object sym) {
+	JCTree.JCExpression checkerFunction = dotsExp(this.argumentCheckFunctionName);
+	JCTree.JCExpression checkedArgument =
+	    maker.Apply(null, checkerFunction,
+			List.of(argument, maker.Literal(this.stringLiteralFillInMarker)));
+	//return maker.TypeCast(argumentType, checkedArgument);
+        if (argumentType == null ||
+	    argumentType.toString().equals("java.lang.Object") ||
+	    argumentType.toString().equals("Object")) {
+	    return checkedArgument;
+	} else {
+	    return maker.TypeCast(argumentType, checkedArgument);
+        }
+    }
+
+    /**
      * Implement a constructor call to the new constructor.
      */
     private JCTree.JCStatement makeConstructorCall(JCTree.JCMethodDecl tree) {
-	JCTree.JCExpression constructor =// maker.This(this.currentClassDef.sym.type);
-            dotsExp("this");
+	JCTree.JCExpression constructor = dotsExp("this");
 
 	ListBuffer<JCTree.JCExpression> args = new ListBuffer<JCTree.JCExpression>();
 	List<JCTree.JCVariableDecl> params = tree.params;
 	while (params != null && params.head != null) {
-	    args.append(maker.Ident(params.head.name));
+	    args.append(makeCheckedArgument(maker.Ident(params.head.name),
+                                            copier.copy(params.head.vartype),
+					    params.head.sym));
 	    params = params.tail;
 	}
 	

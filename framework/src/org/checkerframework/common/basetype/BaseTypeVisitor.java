@@ -24,6 +24,7 @@ import org.checkerframework.dataflow.util.PurityChecker.PurityResult;
 import org.checkerframework.dataflow.util.PurityUtils;
 import org.checkerframework.framework.flow.CFAbstractStore;
 import org.checkerframework.framework.flow.CFAbstractValue;
+import org.checkerframework.framework.gradual.SafeConstructorMarkerDummy;
 import org.checkerframework.framework.qual.DefaultQualifier;
 import org.checkerframework.framework.qual.FieldIsExpression;
 import org.checkerframework.framework.qual.Unused;
@@ -64,6 +65,7 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -189,6 +191,169 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
     /** An instance of the {@link ContractsUtils} helper class. */
     protected final ContractsUtils contractsUtils;
 
+    ///////////////////---- Gradual stuff ----//////////////////////
+    /**
+     * A list of locations that should get a runtime check, given by the
+     * TreePath to the location within the AST, as well as the specific
+     * value tree that should be tested.
+     */
+    protected Map<TreePath, Map.Entry<Tree, AnnotatedTypeMirror>> runtimeCheckLocations;
+
+    /**
+     * A list of locations already added for checks to ensure no duplicates.
+     */
+    protected Set<Tree> existingCheckedValues;
+
+    /**
+     * A flag to indicate if we are processing a method which is synthetic,
+     * that we generated for type safety.  We don't want to do any dynamic checks
+     * in these methods as we are already peforming dynamic checks in the right places.
+     */
+    protected boolean inSyntheticMethod = false;
+
+    /**
+     * This field stores the postfix to apply to save methods, and all
+     * checked method calls.
+     */
+    private final String safeMethodNamePostfix = "_$safe";
+
+    /**
+     * The postfix to use for the runtime method selector to determine whether to
+     * invoke the safe version or the unsafe version of a method.
+     */
+    private final String maybeMethodNamePostfix = "_$maybe";
+
+    /**
+     * Thie class of the dummy marker class used to indicate safe constructors.
+     */
+    private final Class<SafeConstructorMarkerDummy> constructorMarkerClass =
+	SafeConstructorMarkerDummy.class;
+
+    /**
+     * Keep the current class we're processing so that we can look up if a given
+     * method has a safe version or not.
+     */
+    private ClassTree currentClassTree = null;
+
+    /** Track whether we are type checking code within a method or if it is static
+     *  initializer code.
+     */
+    protected boolean inMethod = false;
+
+    /**
+     * The name used on all constructor methods.
+     */
+    protected final String constructorName = "<init>";
+
+    /**
+     * Gets the list of locations where a runtime check should be placed.
+     */
+    public Map<TreePath, Map.Entry<Tree, AnnotatedTypeMirror>> getRuntimeCheckLocations() {
+	return Collections.unmodifiableMap(runtimeCheckLocations);
+    }
+
+    private boolean currentClassTreeContainsSafeVersionOfConstructor(MethodTree node) {
+	if (!node.getName().toString().equals(this.constructorName)) {
+	    return false;
+	}
+
+	for (Tree member : this.currentClassTree.getMembers()) {
+	    if (member instanceof MethodTree) {
+		MethodTree methodMember = (MethodTree) member;
+		if (methodMember.getName().toString().equals(this.constructorName)) {
+		    boolean allParamsMatch =
+			node.getParameters().size() == methodMember.getParameters().size() - 1;
+
+		    if (!allParamsMatch) { continue; }
+
+		    for (int i = 0; i < node.getParameters().size(); i++) {
+			String paramType =
+			    methodMember.getParameters().get(i + 1).getType().toString();
+			allParamsMatch &=
+			    node.getParameters().get(i).getType().toString().equals(paramType);
+		    }
+
+		    String firstParam = methodMember.getParameters().get(0).getType().toString();
+		    if (allParamsMatch &&
+			firstParam.equals(this.constructorMarkerClass.getTypeName())) {
+			return true;
+		    }
+		}
+	    }
+	}
+
+	return false;
+    }
+
+    private boolean currentClassTreeContainsSafeVersionOf(MethodTree node) {
+	String newName = node.getName() + this.safeMethodNamePostfix;
+
+	// System.out.println("Checking for safe version of: " + node.getName());
+	for (Tree member : this.currentClassTree.getMembers()) {
+	    if (member instanceof MethodTree) {
+		MethodTree methodMember = (MethodTree) member;
+		// System.err.println("Checking : " + methodMember.getName());
+		// System.out.println("Newname: " + newName);
+
+		if (methodMember.getName().toString().equals(newName)) {
+		    boolean allParamsMatch =
+			node.getParameters().size() == methodMember.getParameters().size();
+		    // System.out.println("params: " + node.getParameters());
+		    // System.out.println("Otherparams: " + methodMember.getParameters());
+		    if (!allParamsMatch) { continue; }
+
+		    for (int i = 0; i < node.getParameters().size(); i++) {
+			String paramType = methodMember.getParameters().get(i).getType().toString();
+			allParamsMatch &=
+			    node.getParameters().get(i).getType().toString().equals(paramType);
+		    }
+
+		    if (allParamsMatch) {
+			// System.err.println("Matching all params");
+			return true;
+		    } else {
+			// System.err.println("Doesn't match all params: " + methodMember.getName().toString());
+		    }
+		}
+	    }
+	}
+
+	return false;
+    }
+
+
+    @Override
+    public Void visitMethod(MethodTree node, Void p) {
+	boolean prevInMethod = this.inMethod;
+	this.inMethod = true;
+
+	if (!this.checker.isGradualTypeSystem()) {
+	    Void ret = delegatedVisitMethod(node, p);
+	    this.inMethod = prevInMethod;
+	    return ret;
+	}
+
+	//System.err.println("Visiting Method: " + node.getName().toString());
+	if (node.getName().toString().endsWith(this.maybeMethodNamePostfix) ||
+	    this.currentClassTreeContainsSafeVersionOf(node) ||
+	    this.currentClassTreeContainsSafeVersionOfConstructor(node)) {
+	    //System.err.println("Skipping Method: " + node.getName() + " is synthetic");
+	    this.inSyntheticMethod = true;
+	    this.inMethod = prevInMethod;
+	    return null;
+	} else {
+	    // System.out.println("Method: " + node.getName() + " is not synthetic");
+	    this.inSyntheticMethod = false;
+	    //System.err.println("Now Checking method: " + node.getName().toString());
+	    Void r = this.delegatedVisitMethod(node, p);
+	    this.inMethod = prevInMethod;
+	    return r;
+	}
+	//return super.visitMethod(node,p);
+    }
+
+    ////////////////////----- End gradual stuff -------//////////////
+
     /**
      * @param checker
      *            the type-checker associated with this visitor (for callbacks to
@@ -204,6 +369,9 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
         this.visitorState = atypeFactory.getVisitorState();
         this.typeValidator = createTypeValidator();
         this.vectorType = atypeFactory.fromElement(elements.getTypeElement("java.util.Vector"));
+	this.runtimeCheckLocations =
+	    new HashMap<TreePath, Map.Entry<Tree, AnnotatedTypeMirror>>();
+	this.existingCheckedValues = new HashSet<Tree>();
     }
 
     protected BaseTypeVisitor(BaseTypeChecker checker, Factory typeFactory) {
@@ -216,6 +384,9 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
         this.visitorState = atypeFactory.getVisitorState();
         this.typeValidator = createTypeValidator();
         this.vectorType = atypeFactory.fromElement(elements.getTypeElement("java.util.Vector"));
+	this.runtimeCheckLocations =
+	    new HashMap<TreePath, Map.Entry<Tree, AnnotatedTypeMirror>>();
+	this.existingCheckedValues = new HashSet<Tree>();
     }
 
     /**
@@ -274,12 +445,15 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
         return super.scan(tree, p);
     }
 
-    @Override
+    //@Override
     public Void visitClass(ClassTree node, Void p) {
 	ClassTree prevCurrentClassTree = this.currentClassTree;
 	this.currentClassTree = node;
+	boolean prevInMethod = this.inMethod;
 
+	this.inMethod = false;
 	Void val = visitClass2(node, p);
+	this.inMethod = prevInMethod;
 
 	this.currentClassTree = prevCurrentClassTree;
 	return val;
@@ -393,95 +567,6 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
     }
 
     /**
-     * This field stores the postfix to apply to save methods, and all
-     * checked method calls.
-     */
-    protected final String safeMethodNamePostfix = "_$safe";
-
-    /**
-     * The postfix to use for the runtime method selector to determine whether to
-     * invoke the safe version or the unsafe version of a method.
-     */
-    protected final String maybeMethodNamePostfix = "_$maybe";
-
-    private boolean currentClassTreeContainsSafeVersionOfConstructor(MethodTree node) {
-	if (!node.getName().toString().equals(this.constructorName)) {
-	    return false;
-	}
-
-	for (Tree member : this.currentClassTree.getMembers()) {
-	    if (member instanceof MethodTree) {
-		MethodTree methodMember = (MethodTree) member;
-		if (methodMember.getName().toString().equals(this.constructorName)) {
-		    boolean allParamsMatch =
-			node.getParameters().size() == methodMember.getParameters().size() - 1;
-
-		    if (!allParamsMatch) { continue; }
-
-		    for (int i = 0; i < node.getParameters().size(); i++) {
-			String paramType =
-			    methodMember.getParameters().get(i + 1).getType().toString();
-			allParamsMatch &=
-			    node.getParameters().get(i).getType().toString().equals(paramType);
-		    }
-
-		    String firstParam = methodMember.getParameters().get(0).getType().toString();
-		    if (allParamsMatch &&
-			firstParam.contains("SafeConstructorMarkerDummy")) {
-			return true;
-		    }
-		}
-	    }
-	}
-
-	return false;
-    }
-
-    private boolean currentClassTreeContainsSafeVersionOf(MethodTree node) {
-	String newName = node.getName() + this.safeMethodNamePostfix;
-
-	// System.out.println("Checking for safe version of: " + node.getName());
-	for (Tree member : this.currentClassTree.getMembers()) {
-	    if (member instanceof MethodTree) {
-		MethodTree methodMember = (MethodTree) member;
-		// System.out.println("Newname: " + newName);
-
-		if (methodMember.getName().toString().equals(newName)) {
-		    boolean allParamsMatch =
-			node.getParameters().size() == methodMember.getParameters().size();
-		    // System.out.println("params: " + node.getParameters());
-		    // System.out.println("Otherparams: " + methodMember.getParameters());
-		    if (!allParamsMatch) { continue; }
-
-		    for (int i = 0; i < node.getParameters().size(); i++) {
-			String paramType = methodMember.getParameters().get(i).getType().toString();
-			allParamsMatch &=
-			    node.getParameters().get(i).getType().toString().equals(paramType);
-		    }
-
-		    if (allParamsMatch) {
-			return true;
-		    } else {
-		    }
-		}
-	    }
-	}
-
-	return false;
-    }
-
-    /**
-     * The name used on all constructor methods.
-     */
-    protected final String constructorName = "<init>";
-
-    /**
-     * Keep the current class we're processing so that we can look up if a given
-     * method has a safe version or not.
-     */
-    private ClassTree currentClassTree = null;
-
-    /**
      * Performs pseudo-assignment check: checks that the method obeys override
      * and subtype rules to all overridden methods.
      *
@@ -496,8 +581,8 @@ public class BaseTypeVisitor<Factory extends GenericAnnotatedTypeFactory<?, ?, ?
      * Also, it issues a "missing.this" error for static method annotated
      * receivers.
      */
-    @Override
-    public Void visitMethod(MethodTree node, Void p) {
+    //@Override
+    public Void delegatedVisitMethod(MethodTree node, Void p) {
 	if (node.getName().toString().endsWith(this.maybeMethodNamePostfix) ||
 	    this.currentClassTreeContainsSafeVersionOf(node) ||
 	    this.currentClassTreeContainsSafeVersionOfConstructor(node)) {

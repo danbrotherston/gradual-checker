@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
@@ -15,6 +15,7 @@ import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 import com.sun.tools.javac.tree.TreeCopier;
 
+import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 
 import org.checkerframework.javacutil.TreeUtils;
@@ -36,12 +37,13 @@ import javax.lang.model.element.Element;
  * runtime check locations (as values which need to tested) and replaces their
  * enclosing statements with runtime checks.
  */
-public class RuntimeCheckInserterTreeTranslator extends GeneralTreeTranslator {
+public class RuntimeCheckInserterTreeTranslator<Checker extends BaseTypeChecker>
+        extends GeneralTreeTranslator<Checker> {
 
     /**
      * Builder to create runtime checks for the locations which need a check.
      */
-    RuntimeCheckBuilder checkBuilder = null;
+    RuntimeCheckBuilder<Checker> checkBuilder = null;
     
     /**
      * Locations which need runtime checks added.
@@ -57,7 +59,7 @@ public class RuntimeCheckInserterTreeTranslator extends GeneralTreeTranslator {
     /**
      * Fixer used to fix all copied trees non-local exit's targets.
      */
-    private final NonLocalExitStatementFixerTreeTranslator fixer;
+    private final NonLocalExitStatementFixerTreeTranslator<Checker> fixer;
 
     /**
      * Stack keeping track of our position within the tree, allowing us to get
@@ -99,14 +101,14 @@ public class RuntimeCheckInserterTreeTranslator extends GeneralTreeTranslator {
      */
     TypeEraserTreeTranslator eraser = null;
 
-    class TypeEraserTreeTranslator extends GeneralTreeTranslator {
+    class TypeEraserTreeTranslator extends GeneralTreeTranslator<Checker> {
 
 	/**
 	 * Javac types instance.
 	 */
-	protected final Types types;
+    	protected final Types types;
 
-	TypeEraserTreeTranslator(GradualNullnessChecker c,
+	TypeEraserTreeTranslator(Checker c,
 				 ProcessingEnvironment env,
 				 TreePath p) {
 	    super(c, env, p);
@@ -161,17 +163,17 @@ public class RuntimeCheckInserterTreeTranslator extends GeneralTreeTranslator {
      * @param checkBuilder A properly configured RuntimeCheckBuilder to use to build the runtime
      *                     checks.
      */
-    public RuntimeCheckInserterTreeTranslator(GradualNullnessChecker c,
+    public RuntimeCheckInserterTreeTranslator(Checker c,
 					      ProcessingEnvironment env,
 					      TreePath p,
 					      Map<TreePath, Map.Entry<Tree, AnnotatedTypeMirror>>
 					      replacementLocations,
-					      RuntimeCheckBuilder checkBuilder) {
+					      RuntimeCheckBuilder<Checker> checkBuilder) {
 	super(c, env, p);
 	this.env = env;
 	eraser = new TypeEraserTreeTranslator(c, env, p);
 	copier = new TreeCopier<Void>(maker);
-	fixer = new NonLocalExitStatementFixerTreeTranslator(c, env, p);
+	fixer = new NonLocalExitStatementFixerTreeTranslator<Checker>(c, env, p);
 	this.checkBuilder = checkBuilder;
 	this.replacementLocations = replacementLocations;
 	this.replacementMap = new HashMap<Tree, AnnotatedTypeMirror>();
@@ -180,17 +182,17 @@ public class RuntimeCheckInserterTreeTranslator extends GeneralTreeTranslator {
 	}
     }
 
-    public RuntimeCheckInserterTreeTranslator(GradualNullnessChecker c,
+    public RuntimeCheckInserterTreeTranslator(Checker c,
 					      ProcessingEnvironment env,
 					      Map<Tree, AnnotatedTypeMirror>
 					      replacementLocations,
 					      TreePath p,
-					      RuntimeCheckBuilder checkBuilder) {
+					      RuntimeCheckBuilder<Checker> checkBuilder) {
 	super(c, env, p);
 	this.env = env;
 	eraser = new TypeEraserTreeTranslator(c, env, p);
 	copier = new TreeCopier<Void>(maker);
-	fixer = new NonLocalExitStatementFixerTreeTranslator(c, env, p);
+	fixer = new NonLocalExitStatementFixerTreeTranslator<Checker>(c, env, p);
 	this.checkBuilder = checkBuilder;
 	this.replacementMap = new HashMap<Tree, AnnotatedTypeMirror>();
 	for (Map.Entry<Tree, AnnotatedTypeMirror> entry : replacementLocations.entrySet()) {
@@ -272,9 +274,9 @@ public class RuntimeCheckInserterTreeTranslator extends GeneralTreeTranslator {
 	
 	// Replace that value within the original statement with an instance of the variable.
 	// See last comment in this method for more information.
-	SingleReplacementTreeTranslator replacer =
-	    new SingleReplacementTreeTranslator(this.checker, this.env, this.path,
-						that, result);
+	SingleReplacementTreeTranslator<Checker> replacer =
+	    new SingleReplacementTreeTranslator<Checker>(this.checker, this.env, this.path,
+							 that, result);
 
 	newAssignment.accept(replacer);
 
@@ -339,9 +341,9 @@ public class RuntimeCheckInserterTreeTranslator extends GeneralTreeTranslator {
 
 	// Replace the value within the original statement with an instance of the variable.
 	// See the last comment in this method for more information.
-	SingleReplacementTreeTranslator replacer =
-	    new SingleReplacementTreeTranslator(this.checker, this.env, this.path,
-						that, result);
+	SingleReplacementTreeTranslator<Checker> replacer =
+	    new SingleReplacementTreeTranslator<Checker>(this.checker, this.env, this.path,
+							 that, result);
 	// System.out.println("Statement Before: " + statement);
 	parentStatement.accept(replacer);
 	// System.out.println("Statement After: " + statement);

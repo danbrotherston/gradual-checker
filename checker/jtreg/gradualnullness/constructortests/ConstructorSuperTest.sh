@@ -14,6 +14,6 @@ $TESTSRC/../../../bin/javac -d $TESTCLASSES -processor org.checkerframework.chec
 
 set -e
 
-javap -c $TESTCLASSES/ConstructorSuperTest.class | grep -c '[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method "<init>":(Lorg/checkerframework/checker/gradualnullness/SafeConstructorMarkerDummy;Ljava/lang/Integer;)V' | grep -q '2'
+javap -c $TESTCLASSES/ConstructorSuperTest.class | grep -c '[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method "<init>":(Lorg/checkerframework/framework/gradual/SafeConstructorMarkerDummy;Ljava/lang/Integer;)V' | grep -q '2'
 
-javap -c $TESTCLASSES/ConstructorSuperTest.class | grep -c '[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method ConstructorSuperTestParent."<init>":(Lorg/checkerframework/checker/gradualnullness/SafeConstructorMarkerDummy;Ljava/lang/Integer;)V' | grep -q '2'
+javap -c $TESTCLASSES/ConstructorSuperTest.class | grep -c '[0-9]*: invokespecial #[0-9]*[[:space:]]*// Method ConstructorSuperTestParent."<init>":(Lorg/checkerframework/framework/gradual/SafeConstructorMarkerDummy;Ljava/lang/Integer;)V' | grep -q '2'

@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
@@ -11,6 +11,7 @@ import com.sun.tools.javac.tree.JCTree.JCStatement;
 import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
 import com.sun.tools.javac.util.List;
 
+import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 
 import java.util.AbstractMap.SimpleEntry;
@@ -31,7 +32,8 @@ import org.checkerframework.javacutil.trees.TreeBuilder;
  * runtime check locations (as values which need to tested) and replaces their
  * enclosing statements with runtime checks.
  */
-public class RuntimeCheckTreeExpressionTranslator extends GeneralTreeTranslator {
+public class RuntimeCheckTreeExpressionTranslator<Checker extends BaseTypeChecker>
+        extends GeneralTreeTranslator<Checker> {
 
     /**
      * Stores the list of locations where we need to perform runtime checks.
@@ -59,8 +61,7 @@ public class RuntimeCheckTreeExpressionTranslator extends GeneralTreeTranslator 
      * String references the runtimeCheckArgument function in the NullnessRunctimeCheck
      * class.
      */
-    protected final String argumentCheckFunctionName =
-	"org.checkerframework.checker.gradualnullness.NullnessRuntimeCheck.runtimeCheckArgument";
+    protected final String argumentCheckFunctionName;
 
     /**
      * @constructor
@@ -71,16 +72,15 @@ public class RuntimeCheckTreeExpressionTranslator extends GeneralTreeTranslator 
      * Where TreePath is the path within the tree to the value node to replace.
      *       Tree is the actual value node to replace.
      *       AnnotatedTypeMirror is the compile time type this value must conform to at runtime.
-     * @param checkBuilder A properly configured RuntimeCheckBuilder to use to build the runtime
-     *                     checks.
+     * @param methodName The name of the method to use to runtime check values.
      */
-    public RuntimeCheckTreeExpressionTranslator(GradualNullnessChecker c,
+    public RuntimeCheckTreeExpressionTranslator(Checker c,
 						ProcessingEnvironment env,
 						TreePath p,
 						Map<TreePath,
 						    Map.Entry<Tree, AnnotatedTypeMirror>>
 						replacementLocations,
-						RuntimeCheckBuilder checkBuilder) {
+						String methodName) {
 	// Since this must occur in a method which we can call here to satisfy Java we
 	// have to do some finagling.
 	super(c, env, p);
@@ -88,6 +88,7 @@ public class RuntimeCheckTreeExpressionTranslator extends GeneralTreeTranslator 
 	this.aTypeFactory = c.getTypeFactory();
 	this.procEnv = env;
 	this.replacementLocations = new HashMap<JCTree, AnnotatedTypeMirror>();
+	this.argumentCheckFunctionName = methodName;
 
 	for(Map.Entry<Tree, AnnotatedTypeMirror> entry : replacementLocations.values()) {
 	    this.replacementLocations.put((JCTree)(entry.getKey()), entry.getValue());

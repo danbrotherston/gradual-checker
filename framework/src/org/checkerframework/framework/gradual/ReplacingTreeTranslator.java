@@ -1,4 +1,4 @@
-package org.checkerframework.checker.gradualnullness;
+package org.checkerframework.framework.gradual;
 
 import com.sun.source.util.TreePath;
 import com.sun.tools.javac.tree.JCTree;
@@ -10,6 +10,8 @@ import java.util.Map;
 
 import javax.annotation.processing.ProcessingEnvironment;
 
+import org.checkerframework.common.basetype.BaseTypeChecker;
+
 /**
  * @author danbrotherston
  *
@@ -18,7 +20,8 @@ import javax.annotation.processing.ProcessingEnvironment;
  * with a mapping of old nodes to new nodes.  When an old node is encountered it
  * is replaced with the associated new node.
  */
-public class ReplacingTreeTranslator extends GeneralTreeTranslator {
+public class ReplacingTreeTranslator<Checker extends BaseTypeChecker>
+        extends GeneralTreeTranslator<Checker> {
     private final Map<JCTree, JCTree> replacementMap;
 
     /**
@@ -31,7 +34,7 @@ public class ReplacingTreeTranslator extends GeneralTreeTranslator {
      *                       .equals is called on the node in the actual tree
      *                       that it should replace.
      */
-    public ReplacingTreeTranslator(GradualNullnessChecker c,
+    public ReplacingTreeTranslator(Checker c,
 				   ProcessingEnvironment env,
 				   TreePath p,
 				   Map<JCTree, JCTree> replacementMap) {
