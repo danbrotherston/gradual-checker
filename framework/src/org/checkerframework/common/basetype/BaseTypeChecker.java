@@ -606,8 +606,9 @@ public abstract class BaseTypeChecker extends SourceChecker implements BaseTypeC
 
 	    FillInTypePlaceholderTreeTranslator<BaseTypeChecker> fillInTypePlaceholders =
 		new FillInTypePlaceholderTreeTranslator<BaseTypeChecker>(this,
-							getProcessingEnvironment(),
-							path);
+									 getProcessingEnvironment(),
+									 path,
+									 runtimeCheckMethodName);
 
 	    tree.accept(methodRenamer);
 	    tree.accept(constructorRefactorer);

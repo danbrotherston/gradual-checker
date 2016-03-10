@@ -95,6 +95,9 @@ public class RuntimeCheckTreeExpressionTranslator<Checker extends BaseTypeChecke
 	}
     }
 
+    //    public void visitApply(JCTree.JCMethodInvocation tree) {
+    //	if tre
+
     @Override
     public void visitTree(JCTree that) {
 	if (this.replacementLocations.containsKey(that)) {

@@ -56,10 +56,12 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
     extends HelpfulTreeTranslator<Checker> {
     public FillInTypePlaceholderTreeTranslator(Checker c,
 					       ProcessingEnvironment env,
-					       TreePath p) {
+					       TreePath p,
+					       String runtimeMethodName) {
 	super(c, env, p);
 	this.builder = new TreeBuilder(env);
 	this.aTypeFactory = c.getTypeFactory();
+	this.runtimeCheckArgumentFQMethodName = runtimeMethodName;
 	this.procEnv = env;
     }
 
@@ -81,6 +83,11 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
     protected final AnnotatedTypeFactory aTypeFactory;
 
     /**
+     * The secret name given to constructors in Java.
+     */
+    protected final String constructorMethodName = "<init>";
+
+    /**
      * This is necessary because the checker framework typechecking has not run at this
      * point yet, thus the checker framework type is unavailable.  We mark the string
      * literal with this value so that we can fill the type in at a later time.
@@ -98,8 +105,7 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
      * This string references the isChecked method to determine if an object is
      * based on a class which has been checked by the checker framework.
      */
-    protected final String runtimeCheckArgumentFQMethodName =
-	"org.checkerframework.checker.gradualnullness.NullnessRuntimeCheck.runtimeCheckArgument";
+    protected final String runtimeCheckArgumentFQMethodName;
 
     /**
      * The index of the argument we're translating right now.
@@ -115,6 +121,7 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
     public void visitMethodDef(JCTree.JCMethodDecl tree) {
 	JCTree.JCMethodDecl prevLastMethod = this.lastMethodDef;
 	this.lastMethodDef = tree;
+	// System.err.println("Visiting method: " + tree);
 	super.visitMethodDef(tree);
 	this.lastMethodDef = prevLastMethod;
     }
@@ -139,7 +146,8 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
 
     private String getCurrentArgType() {
 	JCTree.JCVariableDecl arg = this.getCurrentArg();
-	// System.out.println("arg: " + arg);
+	// System.err.println("arg: " + arg);
+	// System.err.println("atypefact: " + aTypeFactory);
 	AnnotatedTypeMirror argType = aTypeFactory.getAnnotatedType(arg.sym);
 	// System.out.println("argType: " + argType);
 	return argType.toString();
@@ -147,8 +155,9 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
 
     private JCTree.JCVariableDecl getCurrentArg() {
 	List<JCTree.JCVariableDecl> params = this.lastMethodDef.params;
-	// System.out.println("Params: " + params);
-	// System.out.println("Current index: " + this.argIndex);
+	// System.err.println("lastmeth: " + this.lastMethodDef);
+	// System.err.println("Params: " + params);
+	// System.err.println("Current index: " + this.argIndex);
 
 	for (int i = 0; i < this.argIndex; i++) {
 	    if (params == null || params.head == null) {
@@ -166,13 +175,24 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
 
     private List<JCTree.JCExpression> recordAndTranslate(List<JCTree.JCExpression> args) {
 	if (args == null) return null;
-	this.argIndex = 0;
+	//int prevArgIndex = this.argIndex;
+	//System.err.println("record and translate: " + args);
+
+	if (this.lastMethodDef != null &&
+	    this.lastMethodDef.getName() != null &&
+	    this.lastMethodDef.getName().toString().equals(this.constructorMethodName)) {
+	    this.argIndex = -1;
+	} else {
+	    this.argIndex = 0;
+	}
+
 	for (List<JCTree.JCExpression> l = args; l.nonEmpty(); l = l.tail) {
-	    // System.err.println("Trans arg: " + l.head);
+	    // System.err.println("Trans arg index: " + this.argIndex + " for arg: " + l.head);
 	    l.head = translate(l.head);
 	    this.argIndex++;
 	}
 
+	//this.argIndex = prevArgIndex;
 	this.argIndex = -1;
 	return args;
     }
@@ -180,12 +200,14 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
     @Override
     public void visitApply(JCTree.JCMethodInvocation tree) {
 	tree.meth = translate(tree.meth);
-	// System.out.println("Tree meth: " + tree.meth.toString());
+	// System.err.println("Tree meth: " + tree);
+	int prevArgIndex = this.argIndex;
 	if (!tree.meth.toString().equals(this.runtimeCheckArgumentFQMethodName)) {
 	    tree.args = recordAndTranslate(tree.args);
 	} else {
 	    tree.args = translate(tree.args);
 	}
+	this.argIndex = prevArgIndex;
 	result = tree;
     }
 }
