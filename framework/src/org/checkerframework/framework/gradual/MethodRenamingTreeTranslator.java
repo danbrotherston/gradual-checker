@@ -184,8 +184,8 @@ public class MethodRenamingTreeTranslator<Checker extends BaseTypeChecker>
 	    if (underlyingReceiverType instanceof DeclaredType ||
 		underlyingReceiverType instanceof TypeVariable) {
 
-		System.err.println("Tree: " + tree + " fieldAccess: " + fieldAccess
-				   + " sym: " + fieldAccess.sym);
+		//System.err.println("Tree: " + tree + " fieldAccess: " + fieldAccess
+		//		   + " sym: " + fieldAccess.sym);
 		Name methodIdentifier = fieldAccess.getIdentifier();
 		MethodSymbol methodSymbol = (MethodSymbol) fieldAccess.sym;
 
@@ -291,11 +291,12 @@ public class MethodRenamingTreeTranslator<Checker extends BaseTypeChecker>
 		// System.err.println("Method found: " + elem.getSimpleName());
 		// Attribute the new tree.
 		// System.err.println("Attribbing: " + newMethodCall);
-		System.err.println("newMethodCall: " + newMethodCall + " old: " + tree);
-		System.err.println("NewMethod: " + elem + " old meth: "  + originalSymbol);
-		System.err.println("env: " + this.getAttrEnv(tree));
-		System.err.println(" treetype: " + tree.type + " return type: "
-				   + ((ExecutableElement) elem).getReturnType());
+		//System.err.println("newMethodCall: " + newMethodCall + " old: " + tree);
+		//System.err.println("NewMethod: " + elem + " old meth: "  + originalSymbol);
+		//System.err.println("env: " + this.getAttrEnv(tree));
+		//System.err.println(" treetype: " + tree.type + " return type: "
+		//		   + ((ExecutableElement) elem).getReturnType());
+
 		Type retType;
 		// Use the original return type, unless it has a wildcard which has been captured.
 		// Really we need to build a new type, which uses the original type, in context,

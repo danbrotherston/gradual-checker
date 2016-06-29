@@ -230,6 +230,7 @@ public class MethodRefactoringTreeTranslator<Checker extends BaseTypeChecker>
 						    JCTree.JCExpression argumentType,
 						    Object sym) {
 	JCTree.JCExpression checkerFunction = dotsExp(this.argumentCheckFunctionName);
+        System.err.println("TESTINSERTED");
 	JCTree.JCExpression checkedArgument =
 	    maker.Apply(null, checkerFunction,
 			List.of(argument, maker.Literal(this.stringLiteralFillInMarker)));
@@ -327,6 +328,7 @@ public class MethodRefactoringTreeTranslator<Checker extends BaseTypeChecker>
 					      JCTree.JCBlock methodBody) {
 	Name originalName = tree.getName();
 	Name newName = names.fromString(originalName + namePostfix);
+        System.err.println("NEWMETHOD");
 
 	JCTree.JCMethodDecl newMethod =
 	    maker.MethodDef(copier.copy(tree.mods),
@@ -335,7 +337,7 @@ public class MethodRefactoringTreeTranslator<Checker extends BaseTypeChecker>
 			    copier.copy(tree.typarams),
 			    copier.copy(tree.params),
 			    copier.copy(tree.thrown),
-			    copier.copy(methodBody),
+			    methodBody,
 			    null);
 
 	// If this is an interface we must make the methods default

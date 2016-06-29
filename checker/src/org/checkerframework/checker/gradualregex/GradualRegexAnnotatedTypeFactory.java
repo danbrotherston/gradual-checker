@@ -58,6 +58,7 @@ public class GradualRegexAnnotatedTypeFactory extends RegexClassicAnnotatedTypeF
 	Set<Class<? extends Annotation>> typeQualifiers = new HashSet<Class<? extends Annotation>>();
 	typeQualifiers.addAll(gradualQualifiers);
 	typeQualifiers.addAll(regexQualifiers);
+	System.err.println("TypeQuals: " + typeQualifiers);
 	return Collections.unmodifiableSet(typeQualifiers);
     }
 }

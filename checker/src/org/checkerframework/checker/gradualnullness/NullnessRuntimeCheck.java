@@ -26,12 +26,15 @@ public class NullnessRuntimeCheck {
 	//Thread.dumpStack();
 	/*return true;*/
 
-      type = type.contains("<") ? type.substring(0, type.indexOf("<")) : type;
+		System.err.println("RUNTIMECHECK");
+
+	/*	      type = type.contains("<") ? type.substring(0, type.indexOf("<")) : type;
       boolean nullable = type.contains("Nullable") || type.contains("PolyNull");
       int index = type.indexOf("Nullable");
       index = index == -1 ? type.indexOf("PolyNull") : index;
       nullable = nullable && index > type.indexOf("NonNull");
-      return nullable || (value != null);
+      return nullable || (value != null);*/
+      return value != null;
     }
 
     /**

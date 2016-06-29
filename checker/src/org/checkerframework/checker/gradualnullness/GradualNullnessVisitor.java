@@ -49,16 +49,18 @@ public class GradualNullnessVisitor extends NullnessVisitor {
 
 	// Record this location to insert a runtime check.
 	if (!this.inSyntheticMethod && !this.existingCheckedValues.contains(valueTree)) {
-	    System.err.println("Putting check location: " + getCurrentPath());
-	    System.err.println("Putting value Tree: " + valueTree);
-	    System.err.println("Class: " + valueTree.getClass());
-	    System.err.println("VarClass: " + valueTree.getClass());
+	    //System.err.println("Putting check location: " + getCurrentPath());
+	    //System.err.println("Putting value Tree: " + valueTree);
+	    //System.err.println("Class: " + valueTree.getClass());
+	    //System.err.println("VarClass: " + valueTree.getClass());
 	    // Thread.dumpStack();
 	    if (this.inMethod) {
-		System.err.println("Adding check location");
-		existingCheckedValues.add(valueTree);
-		runtimeCheckLocations.put(getCurrentPath(),
-					  new SimpleEntry<Tree, AnnotatedTypeMirror>(valueTree, varType));
+		if (varType.hasAnnotation(NONNULL)) {
+		    //System.err.println("Adding check location");
+		    existingCheckedValues.add(valueTree);
+		    runtimeCheckLocations.put(getCurrentPath(),
+	              new SimpleEntry<Tree, AnnotatedTypeMirror>(valueTree, varType));
+		}
 	    }
 	}
 

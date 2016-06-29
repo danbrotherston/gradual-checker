@@ -22,6 +22,7 @@ import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Name;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -33,10 +34,13 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Types;
 
+import java.lang.annotation.Annotation;
+
 import org.checkerframework.common.basetype.BaseTypeChecker;
 import org.checkerframework.framework.type.AnnotatedTypeFactory;
 import org.checkerframework.framework.type.AnnotatedTypeMirror;
 import org.checkerframework.framework.type.AnnotatedTypeMirror.AnnotatedExecutableType;
+import org.checkerframework.javacutil.AnnotationUtils;
 import org.checkerframework.javacutil.trees.TreeBuilder;
 import org.checkerframework.javacutil.TreeUtils;
 
@@ -52,6 +56,7 @@ import org.checkerframework.javacutil.TreeUtils;
  * This code is based on the MethodBindingTranslator from enerj,
  * but is simpler because the translation is unconditional.
  */
+@SuppressWarnings("unchecked")
 public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker>
     extends HelpfulTreeTranslator<Checker> {
     public FillInTypePlaceholderTreeTranslator(Checker c,
@@ -63,7 +68,31 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
 	this.aTypeFactory = c.getTypeFactory();
 	this.runtimeCheckArgumentFQMethodName = runtimeMethodName;
 	this.procEnv = env;
+	Class<? extends Annotation> NonNullClass = null;
+	try {
+	    NonNullClass =
+		(Class<? extends Annotation>)(Class.forName("org.checkerframework.checker.nullness.qual.NonNull"));
+
+
+	} catch (ClassNotFoundException e) {
+	    System.err.println("WTF!!!!!");
+	}
+
+	NONNULL = AnnotationUtils.fromClass(procEnv.getElementUtils(), NonNullClass);
     }
+
+    /**
+     * Holds the arguments to the test method, which we can use to revert to no
+     * test if the type supports it.
+     */
+    private JCTree.JCExpression revertArg = null;
+
+    /**
+     * Store the args to the test method so we can revert as needed.
+     */
+    private List<JCTree.JCExpression> args = null;
+
+    private final AnnotationMirror NONNULL;
 
     /**
      * This field stores a tree builder used for building trees used in renaming
@@ -137,23 +166,34 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
 		// literal.
 	    }
 
-	    result = maker.Literal(getCurrentArgType());
+	    AnnotatedTypeMirror type = getCurrentParamAnnotatedTypeMirror();
+	    if (!type.hasAnnotation(NONNULL)) {
+		System.err.println("Setting REVERT");
+		this.revertArg = this.getCurrentArg();
+	    }
+	    result = maker.Literal(type.toString());
+	    //result = maker.Literal(getCurrentParamType());
 	    // System.out.println("Replacing with: " + result.getValue());
 	} else {
 	    result = tree;
 	}
     }
 
-    private String getCurrentArgType() {
-	JCTree.JCVariableDecl arg = this.getCurrentArg();
+    private JCTree.JCExpression getCurrentArg() {
+	return this.args.head;
+    }
+
+    private AnnotatedTypeMirror getCurrentParamAnnotatedTypeMirror() {
+	JCTree.JCVariableDecl arg = this.getCurrentParam();
 	// System.err.println("arg: " + arg);
 	// System.err.println("atypefact: " + aTypeFactory);
 	AnnotatedTypeMirror argType = aTypeFactory.getAnnotatedType(arg.sym);
 	// System.out.println("argType: " + argType);
-	return argType.toString();
+	//return argType.toString();
+	return argType;
     }
 
-    private JCTree.JCVariableDecl getCurrentArg() {
+    private JCTree.JCVariableDecl getCurrentParam() {
 	List<JCTree.JCVariableDecl> params = this.lastMethodDef.params;
 	// System.err.println("lastmeth: " + this.lastMethodDef);
 	// System.err.println("Params: " + params);
@@ -188,7 +228,12 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
 
 	for (List<JCTree.JCExpression> l = args; l.nonEmpty(); l = l.tail) {
 	    // System.err.println("Trans arg index: " + this.argIndex + " for arg: " + l.head);
+	    this.revertArg = null;
 	    l.head = translate(l.head);
+	    if (revertArg != null) {
+		System.err.println("REVERTING ARG");
+		l.head = revertArg;
+	    }
 	    this.argIndex++;
 	}
 
@@ -205,7 +250,10 @@ public class FillInTypePlaceholderTreeTranslator<Checker extends BaseTypeChecker
 	if (!tree.meth.toString().equals(this.runtimeCheckArgumentFQMethodName)) {
 	    tree.args = recordAndTranslate(tree.args);
 	} else {
+	    List<JCTree.JCExpression> prevArgs = this.args;
+	    this.args = tree.args;
 	    tree.args = translate(tree.args);
+	    this.args = prevArgs;
 	}
 	this.argIndex = prevArgIndex;
 	result = tree;

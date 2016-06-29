@@ -342,10 +342,12 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
     @Override
     public AnnotationMirror leastUpperBound(AnnotationMirror a1, AnnotationMirror a2) {
         if (!AnnotationUtils.areSameIgnoringValues(getTopAnnotation(a1), getTopAnnotation(a2))) {
+	    System.err.println("Tops not same a1: " + a1 + ": " + getTopAnnotation(a1) +
+			       " a2: " + a2 + ": " + getTopAnnotation(a2));
             return null;
-        } else if (isSubtype(a1, a2)) {
+        } else if (isSubtype(a1, a2)/*|| QualifierPolymorphism.isDynamic(a1)*/) {
             return a2;
-        } else if (isSubtype(a2, a1)) {
+        } else if (isSubtype(a2, a1)/*|| QualifierPolymorphism.isDynamic(a2)*/) {
             return a1;
         } else if (AnnotationUtils.areSameIgnoringValues(a1, a2)) {
             return getTopAnnotation(a1);
@@ -354,6 +356,7 @@ public class MultiGraphQualifierHierarchy extends QualifierHierarchy {
             lubs = calculateLubs();
         }
         AnnotationPair pair = new AnnotationPair(a1, a2);
+	System.err.println("returning from pairs: " + lubs);
         return lubs.get(pair);
     }
 

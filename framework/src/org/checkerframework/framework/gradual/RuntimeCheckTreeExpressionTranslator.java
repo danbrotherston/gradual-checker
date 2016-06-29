@@ -110,6 +110,7 @@ public class RuntimeCheckTreeExpressionTranslator<Checker extends BaseTypeChecke
 
     private JCTree buildTestCall(JCTree that) {
 	JCTree.JCExpression checkerFunction = dotsExp(this.argumentCheckFunctionName);
+        System.err.println("TESTINSERTED");
 	AnnotatedTypeMirror type = this.replacementLocations.get(that);
 	String literalType = type.toString();
 	JCTree.JCExpression methodCall = maker.Apply(null, checkerFunction,

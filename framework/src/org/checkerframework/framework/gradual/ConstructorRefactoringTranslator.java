@@ -247,6 +247,7 @@ public class ConstructorRefactoringTranslator<Checker extends BaseTypeChecker>
 	    params = params.tail;
 	}
 
+        System.err.println("NEWCONSTRUCTOR");
 	JCTree.JCMethodDecl newConstructor =
 	    maker.MethodDef(tree.mods,
 			    tree.name,
@@ -282,6 +283,7 @@ public class ConstructorRefactoringTranslator<Checker extends BaseTypeChecker>
 						    JCTree.JCExpression argumentType,
 						    Object sym) {
 	JCTree.JCExpression checkerFunction = dotsExp(this.argumentCheckFunctionName);
+        System.err.println("TESTINSERTED");
 	JCTree.JCExpression checkedArgument =
 	    maker.Apply(null, checkerFunction,
 			List.of(argument, maker.Literal(this.stringLiteralFillInMarker)));
