@@ -1,5 +1,7 @@
 package org.checkerframework.javacutil.trees;
 
+import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -22,8 +24,10 @@ import org.checkerframework.javacutil.TypesUtils;
 import com.sun.source.tree.ArrayAccessTree;
 import com.sun.source.tree.AssignmentTree;
 import com.sun.source.tree.BinaryTree;
+import com.sun.source.tree.BlockTree;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.IfTree;
 import com.sun.source.tree.LiteralTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
@@ -31,11 +35,14 @@ import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.TypeCastTree;
 import com.sun.source.tree.VariableTree;
+import com.sun.tools.javac.code.Kinds;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symtab;
 import com.sun.tools.javac.code.Type;
+import com.sun.tools.javac.model.JavacElements;
 import com.sun.tools.javac.processing.JavacProcessingEnvironment;
 import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.TreeCopier;
 import com.sun.tools.javac.tree.TreeInfo;
 import com.sun.tools.javac.tree.TreeMaker;
 import com.sun.tools.javac.util.Context;
@@ -51,6 +58,7 @@ public class TreeBuilder {
     protected final Types modelTypes;
     protected final com.sun.tools.javac.code.Types javacTypes;
     protected final TreeMaker maker;
+    protected final TreeCopier<Void> copier;
     protected final Names names;
     protected final Symtab symtab;
     protected final ProcessingEnvironment env;
@@ -62,8 +70,30 @@ public class TreeBuilder {
         modelTypes = env.getTypeUtils();
         javacTypes = com.sun.tools.javac.code.Types.instance(context);
         maker = TreeMaker.instance(context);
+        copier = new TreeCopier<Void>(maker);
         names = Names.instance(context);
         symtab = Symtab.instance(context);
+    }
+
+    /**
+     * Returns a copy of an existing tree, names and literals are shared with the
+     * original.
+     *
+     * @param tree The tree to copy.
+     * @return A copy of the given tree.
+     */
+    public Tree copy(Tree t) {
+        return copier.copy((JCTree) t);
+    }
+
+    /**
+     * Returns a statement wrapping an expression statement.
+     *
+     * @param exprTree The expression to wrap.
+     * @return A statement consisting of the provided expression.
+     */
+    public StatementTree buildExpressionStatement(ExpressionTree exprTree) {
+        return maker.Exec((JCTree.JCExpression) exprTree);
     }
 
     /**
@@ -263,7 +293,46 @@ public class TreeBuilder {
     }
 
     /**
+     * Builds an AST Tree to call a method designed by methodExpr,
+     * with two arguments designated by argExpr1 and argExpr2.
+     *
+     * @param methodExpr An expression denoting a method with two arguments.
+     * @param argExpr1 An expression denoting the first argument to the method.
+     * @param argExpr2 An expression denoting the second argument to the method.
+     * @return A MethodInvocationTree to call the method with its two arguments.
+     */
+    public MethodInvocationTree buildMethodInvocation(ExpressionTree methodExpr,
+                                                      ExpressionTree argExpr1,
+                                                      ExpressionTree argExpr2) {
+        return maker.App((JCTree.JCExpression) methodExpr,
+                com.sun.tools.javac.util.List.of((JCTree.JCExpression) argExpr1,
+                                                 (JCTree.JCExpression) argExpr2));
+    }
+
+    /**
+     * Builds an AST Tree to call a method designated by methodExpr,
+     * with a list of arguments designated by argExprList.
+     *
+     * @param methodExpr An expression denoting a method with multiple arguments.
+     * @param argExprList A list of expressions representing the arguments to the
+     *                    method.
+     * @return a MethodInvocationTree to call the method with its arguments.
+     */
+    public MethodInvocationTree buildMethodInvocation(ExpressionTree methodExpr,
+                                                      List<ExpressionTree> argExprList) {
+        com.sun.tools.javac.util.List<JCTree.JCExpression> convertedArgs =
+            com.sun.tools.javac.util.List.<JCTree.JCExpression>nil();
+        Collections.reverse(argExprList);
+        for (ExpressionTree argExpr : argExprList) {
+            convertedArgs = convertedArgs.prepend((JCTree.JCExpression) argExpr);
+        }
+
+        return maker.App((JCTree.JCExpression) methodExpr, convertedArgs);
+    }
+
+    /**
      * Builds an AST Tree to declare and initialize a variable, with no modifiers.
+     * TODO(danbrotherston): Consider refactoring this with the below method.
      *
      * @param type  the type of the variable
      * @param name  the name of the variable
@@ -271,15 +340,16 @@ public class TreeBuilder {
      * @param initializer  the initializer expression
      * @return  a VariableDeclTree declaring the new variable
      */
-    public VariableTree buildVariableDecl(TypeMirror type,
+    public VariableTree buildVariableDecl(TypeMirror realType,
                                           String name,
                                           Element owner,
                                           ExpressionTree initializer) {
         DetachedVarSymbol sym =
             new DetachedVarSymbol(0, names.fromString(name),
-                                  (Type)type, (Symbol)owner);
+                                  (Type)realType, (Symbol)owner);
         VariableTree tree = maker.VarDef(sym, (JCTree.JCExpression)initializer);
         sym.setDeclaration(tree);
+        sym.kind = Kinds.VAR;
         return tree;
     }
 
@@ -370,6 +440,13 @@ public class TreeBuilder {
     }
 
     /**
+     * Builds an AST Tree representing a boolean literal value.
+     */
+    public LiteralTree buildLiteral(boolean value) {
+        return maker.Literal(new Boolean(value));
+    }
+
+    /**
      * Builds an AST Tree to compare two operands with less than.
      *
      * @param left  the left operand tree
@@ -411,6 +488,9 @@ public class TreeBuilder {
     }
 
     /**
+     * 
+
+    /**
      * Builds an AST Tree to access the valueOf() method of boxed type
      * such as Short or Float.
      *
@@ -439,7 +519,8 @@ public class TreeBuilder {
     /**
      * Returns the valueOf method of a boxed type such as Short or Float.
      */
-    public static Symbol.MethodSymbol getValueOfMethod(ProcessingEnvironment env, TypeMirror boxedType) {
+    public static Symbol.MethodSymbol getValueOfMethod(ProcessingEnvironment env,
+                                                       TypeMirror boxedType) {
         Symbol.MethodSymbol valueOfMethod = null;
 
         TypeMirror unboxedType = env.getTypeUtils().unboxedType(boxedType);
@@ -450,7 +531,8 @@ public class TreeBuilder {
 
             if (methodName.contentEquals("valueOf")) {
                 List<? extends VariableElement> params = method.getParameters();
-                if (params.size() == 1 && env.getTypeUtils().isSameType(params.get(0).asType(), unboxedType)) {
+                if (params.size() == 1 &&
+                      env.getTypeUtils().isSameType(params.get(0).asType(), unboxedType)) {
                     valueOfMethod = (Symbol.MethodSymbol)method;
                 }
             }
@@ -458,6 +540,51 @@ public class TreeBuilder {
 
         assert valueOfMethod != null : "no valueOf method declared for boxed type";
         return valueOfMethod;
+    }
+
+    /**
+     * Gets a ClassSymbol element representing a given a class.  This class must be
+     * both in the current execution classpath as well as the compilation classpath.
+     * 
+     * @param clazz The class you wish to get a reference too.
+     * @param procEnv The ProcessingEnvironment in which this lookup will be compiled.
+     * @return Element The element representing the symbol of this class.
+     */
+    public Element getClassSymbolElement(Class<?> clazz, ProcessingEnvironment procEnv) {
+        JavacProcessingEnvironment javacEnv = (JavacProcessingEnvironment) procEnv;
+        JavacElements javacElem = (JavacElements) procEnv.getElementUtils();
+        return javacElem.getTypeElement(clazz.getName());
+    }
+
+    /**
+     * Creates a member select tree to access a given method from the given tree.
+     *
+     * @param method The method to access from the given tree.
+     * @param tree The tree on which to access the given method.
+     * @return A MemberSelectTree representing accessing the given method on the
+     *         given tree, or null if the method does not exist.
+     */
+    public MemberSelectTree buildMethodAccess(Method method, ExpressionTree tree) {
+        TypeMirror treeType = InternalUtils.typeOf(tree);
+        TypeElement treeElement = (TypeElement)((DeclaredType)treeType).asElement();
+
+        String methodName = method.getName();
+        for (ExecutableElement treeMethod :
+                 ElementFilter.methodsIn(elements.getAllMembers(treeElement))) {
+            Name treeMethodName = treeMethod.getSimpleName();
+            if (treeMethodName.contentEquals(methodName)) {
+                Symbol.MethodSymbol treeMethodSymbol = (Symbol.MethodSymbol) treeMethod;
+                Type.MethodType treeMethodType = (Type.MethodType) treeMethodSymbol.asType();
+
+                JCTree.JCFieldAccess treeMethodAccess =
+                    (JCTree.JCFieldAccess) maker.Select((JCTree.JCExpression) tree,
+                                                        treeMethodSymbol);
+                treeMethodAccess.setType(treeMethodType);
+                return treeMethodAccess;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -500,6 +627,46 @@ public class TreeBuilder {
         primValueAccess.setType(methodType);
 
         return primValueAccess;
+    }
+
+    /**
+     * Builds an AST Tree to represent a Block of statements.
+     *
+     * @param stmt1 The first statement in the block.
+     * @param stmt2 The second statement in the block.
+     * @return a StmtBlock consisting of the provided statements.
+     */
+    public BlockTree buildStmtBlock(StatementTree stmt1, StatementTree stmt2) {
+        return maker.Block(0L,
+                           com.sun.tools.javac.util.List.of((JCTree.JCStatement) stmt1,
+                                                            (JCTree.JCStatement) stmt2));
+    }
+
+    /**
+     * Builds an AST Tree to represent a Block of one statement.
+     *
+     * @param stmt The statement in the block.
+     * @return a StmtBlock consisting of the provided statement.
+     */
+    public BlockTree buildStmtBlock(StatementTree stmt) {
+	return maker.Block(0L, com.sun.tools.javac.util.List.of((JCTree.JCStatement) stmt));
+    }
+
+    /**
+     * Builds an AST Tree to represent an If-else statement.
+     *
+     * @param cond An expression representing the If condition. 
+     *             It should type to boolean.
+     * @param ifPart A statement to execute if it "if" evaluates to true.
+     * @param elsePart A statement to execute if the "if" evaluates to false.
+     * @return an If Statement that is composed of the provided building blocks.
+     */
+    public IfTree buildIfStatement(ExpressionTree cond,
+                                   StatementTree ifPart,
+                                   StatementTree elsePart) {
+        return maker.If((JCTree.JCExpression) cond,
+                        (JCTree.JCStatement) ifPart,
+                        (JCTree.JCStatement) elsePart);
     }
 
     /**
@@ -675,7 +842,8 @@ public class TreeBuilder {
      * @param right  the right operand tree
      * @return  a Tree representing "left &lt; right"
      */
-    public BinaryTree buildBinary(TypeMirror type, Tree.Kind op, ExpressionTree left, ExpressionTree right) {
+    public BinaryTree buildBinary(TypeMirror type, Tree.Kind op, ExpressionTree left,
+                                  ExpressionTree right) {
         JCTree.Tag jcOp = kindToTag(op);
         JCTree.JCBinary binary =
             maker.Binary(jcOp, (JCTree.JCExpression)left,
@@ -683,5 +851,4 @@ public class TreeBuilder {
         binary.setType((Type)type);
         return binary;
     }
-
 }

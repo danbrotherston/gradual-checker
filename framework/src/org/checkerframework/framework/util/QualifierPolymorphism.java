@@ -157,7 +157,7 @@ public class QualifierPolymorphism {
     }
 
     public static boolean isDynamic(AnnotationMirror qual) {
-	return AnnotationUtils.areSameByClass(qual, Dynamic.class);
+	return qual != null && AnnotationUtils.areSameByClass(qual, Dynamic.class);
     }
 
     /**

@@ -375,8 +375,8 @@ public abstract class GenericAnnotatedTypeFactory<
             }
 	}
 
-	foundDefaultOtherwiseForUnannotatedCode =
-            addUnannotatedDefaultsToQualifierDefaults(defs, foundDefaultOtherwiseForUnannotatedCode);
+	foundDefaultOtherwiseForUnannotatedCode = addUnannotatedDefaultsToQualifierDefaults(
+            defs, foundDefaultOtherwiseForUnannotatedCode);
 
         // If Unqualified is a supported qualifier, make it the default.
         // This is for convenience only. Maybe remove.
@@ -386,32 +386,6 @@ public abstract class GenericAnnotatedTypeFactory<
             defs.addAbsoluteDefault(unqualified,
                     DefaultLocation.OTHERWISE);
         }
-
-	/*
-        // Add defaults for unnannotated code if conservative unannotated flag
-        // is passed and no defaults were given.
-        if ((// Temporarily use unsafe for bytecode, unless option given
-             checker.hasOption("safeDefaultsForUnannotatedBytecode") ||
-             // This block may need to be split after safeDefaults... is
-             // reverted to unsafeDefaults...
-             checker.hasOption("useSafeDefaultsForUnannotatedSourceCode")) &&
-            !foundDefaultOtherwiseForUnannotatedCode) {
-          Set<? extends AnnotationMirror> tops = this.qualHierarchy.getTopAnnotations();
-          for (AnnotationMirror top : tops) {
-              defs.addUnannotatedDefault(top, DefaultLocation.RETURNS);
-              defs.addUnannotatedDefault(top, DefaultLocation.UPPER_BOUNDS);
-          }
-          Set<? extends AnnotationMirror> bottoms = this.qualHierarchy.getBottomAnnotations();
-          for (AnnotationMirror bot : bottoms) {
-              defs.addUnannotatedDefault(bot, DefaultLocation.PARAMETERS);
-              defs.addUnannotatedDefault(bot, DefaultLocation.LOWER_BOUNDS);
-              defs.addUnannotatedDefault(bot, DefaultLocation.FIELD);
-              // TODO: this isn't simply DefaultLocation.OTHERWISE, because that
-              // would also apply to type declarations, which isn't currently
-              // working as desired.
-              // See: https://groups.google.com/d/msg/checker-framework-dev/vk2V6ZFKPLk/v3hENw-e7gsJ
-          }
-	  }*/
 
         return defs;
     }
@@ -510,7 +484,7 @@ public abstract class GenericAnnotatedTypeFactory<
     protected IdentityHashMap<Tree, Store> regularExitStores;
 
     /**
-     * A mapping from methods to a list with all return statements and the
+     * A mapping from methods to their a list with all return statements and the
      * corresponding store.
      */
     protected IdentityHashMap<MethodTree, List<Pair<ReturnNode, TransferResult<Value, Store>>>> returnStatementStores;

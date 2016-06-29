@@ -72,7 +72,7 @@ public class NullnessVisitor extends InitializationVisitor<NullnessAnnotatedType
     private static final /*@CompilerMessageKey*/ String DEREFERENCE_OF_NULLABLE = "dereference.of.nullable";
 
     // Annotation and type constants
-    private final AnnotationMirror NONNULL, NULLABLE, MONOTONIC_NONNULL;
+    protected final AnnotationMirror NONNULL, NULLABLE, MONOTONIC_NONNULL;
     private final TypeMirror stringType;
 
     /**
@@ -220,8 +220,11 @@ public class NullnessVisitor extends InitializationVisitor<NullnessAnnotatedType
     @Override
     public Void visitMemberSelect(MemberSelectTree node, Void p) {
         boolean isType = node.getExpression().getKind() == Kind.PARAMETERIZED_TYPE;
-        if (!TreeUtils.isSelfAccess(node) && !isType)
+        if (!TreeUtils.isSelfAccess(node) && !isType) {
+	    
+	    
             checkForNullability(node.getExpression(), DEREFERENCE_OF_NULLABLE);
+	}
         return super.visitMemberSelect(node, p);
     }
 
@@ -454,7 +457,7 @@ public class NullnessVisitor extends InitializationVisitor<NullnessAnnotatedType
      * @param tree
      *            the tree where the error is to reported
      */
-    private void checkForNullability(ExpressionTree tree,
+    protected void checkForNullability(ExpressionTree tree,
             /*@CompilerMessageKey*/ String errMsg) {
         AnnotatedTypeMirror type = atypeFactory.getAnnotatedType(tree);
         if (!type.hasEffectiveAnnotation(NONNULL))
